@@ -82,6 +82,13 @@ def test_cli_air_profile_local_file_ingest_reaches_placeholder(
     exit_code = app(["brain", "ingest", str(local_file), "--profile", "air"])
     captured = capsys.readouterr()
 
-    assert exit_code == 1
-    assert "not implemented in this milestone" in captured.err
+    assert exit_code == 0
+    assert "ingested document" in captured.out
     assert "offline policy blocks" not in captured.err
+
+    search_code = app(["brain", "search", "offline notes", "--profile", "air"])
+    search_output = capsys.readouterr()
+
+    assert search_code == 0
+    assert "offline notes" in search_output.out
+    assert str(local_file.resolve()) in search_output.out

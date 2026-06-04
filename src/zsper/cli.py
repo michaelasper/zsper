@@ -136,6 +136,54 @@ def _maybe_reject_ingest_by_profile_policy(namespace: argparse.Namespace) -> int
     return 1
 
 
+def _brain_ingest(namespace: argparse.Namespace) -> int:
+    from zsper.brain.offline_store import BrainOfflineError, ingest_local_file
+    from zsper.profiles import ProfileError, resolve_profile
+
+    try:
+        profile = resolve_profile(namespace.profile)
+    except ProfileError:
+        return _placeholder(namespace)
+
+    if profile.mode != "air-offline":
+        return _placeholder(namespace)
+
+    try:
+        document = ingest_local_file(profile, namespace.path_or_url)
+    except BrainOfflineError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(f"ingested document {document.document_id}\t{document.source_path}")
+    return 0
+
+
+def _brain_search(namespace: argparse.Namespace) -> int:
+    from zsper.brain.offline_store import BrainOfflineError, search_local_files
+    from zsper.profiles import ProfileError, resolve_profile
+
+    try:
+        profile = resolve_profile(namespace.profile)
+    except ProfileError:
+        return _placeholder(namespace)
+
+    if profile.mode != "air-offline":
+        return _placeholder(namespace)
+
+    query = " ".join(namespace.query)
+    try:
+        results = search_local_files(profile, query)
+    except BrainOfflineError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    for result in results:
+        print(
+            f"{result.score}\t{result.document_id}\t{result.source_path}\t{result.snippet}"
+        )
+    return 0
+
+
 def _configure_reserved_signature(
     command_parser: argparse.ArgumentParser,
     *,
@@ -173,6 +221,13 @@ def _profile_handler(command: str):
         "show": _profile_show,
         "doctor": _profile_doctor,
     }[command]
+
+
+def _brain_handler(command: str):
+    return {
+        "ingest": _brain_ingest,
+        "search": _brain_search,
+    }.get(command, _placeholder)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -218,7 +273,12 @@ def _build_parser() -> argparse.ArgumentParser:
                 group=group,
                 command=command,
             )
-            handler = _profile_handler(command) if group == "profile" else _placeholder
+            if group == "profile":
+                handler = _profile_handler(command)
+            elif group == "brain":
+                handler = _brain_handler(command)
+            else:
+                handler = _placeholder
             command_parser.set_defaults(func=handler)
 
     return parser
