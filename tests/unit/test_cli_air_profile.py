@@ -66,6 +66,24 @@ def test_cli_air_profile_blocks_url_ingest_before_placeholder(
     assert "not implemented" not in captured.err
 
 
+def test_cli_air_profile_rejects_missing_ingest_path(
+    capsys,
+    monkeypatch,
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
+    root = tmp_path / "air-profile"
+    assert app(["profile", "init", "--mode", "air-offline", "--root", str(root)]) == 0
+    capsys.readouterr()
+
+    exit_code = app(["brain", "ingest", "--profile", "air"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "path-or-url is required" in captured.err
+
+
 def test_cli_air_profile_local_file_ingest_reaches_placeholder(
     capsys,
     monkeypatch,

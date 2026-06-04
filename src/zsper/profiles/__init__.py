@@ -241,14 +241,7 @@ def _write_registry(path: Path, registry: dict[str, Any]) -> None:
 
 
 def _register_profile(profile: Profile, registry_path: Path) -> None:
-    registry = _read_registry(registry_path)
-    entries = registry.setdefault("profiles", [])
-    for entry in entries:
-        if entry["name"] == profile.name:
-            raise ProfileError(f"profile name already registered: {profile.name}")
-        if Path(entry["root"]).resolve(strict=False) == Path(profile.root):
-            raise ProfileError(f"profile root already registered: {profile.root}")
-
+    registry, entries = _validated_registry_with_entries(profile, registry_path)
     entries.append(
         {
             "name": profile.name,
@@ -258,6 +251,21 @@ def _register_profile(profile: Profile, registry_path: Path) -> None:
         }
     )
     _write_registry(registry_path, registry)
+
+
+def _validated_registry_with_entries(
+    profile: Profile,
+    registry_path: Path,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    registry = _read_registry(registry_path)
+    entries = registry.setdefault("profiles", [])
+    for entry in entries:
+        if entry["name"] == profile.name:
+            raise ProfileError(f"profile name already registered: {profile.name}")
+        if Path(entry["root"]).resolve(strict=False) == Path(profile.root):
+            raise ProfileError(f"profile root already registered: {profile.root}")
+
+    return registry, entries
 
 
 def initialize_profile(
@@ -272,12 +280,15 @@ def initialize_profile(
     if (root_path / "profile.json").exists():
         raise ProfileError(f"{root_path} already contains profile.json")
 
+    resolved_registry_path = registry_path_from_env(registry_path)
+    _validated_registry_with_entries(profile, resolved_registry_path)
+
     root_path.mkdir(parents=True, exist_ok=True)
     for relative_dir in PROFILE_LAYOUT_DIRS:
         (root_path / relative_dir).mkdir(parents=True, exist_ok=True)
     (root_path / "agent-runs" / "runs.jsonl").touch()
     _write_profile(profile)
-    _register_profile(profile, registry_path_from_env(registry_path))
+    _register_profile(profile, resolved_registry_path)
     return profile
 
 

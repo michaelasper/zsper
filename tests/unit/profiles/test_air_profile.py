@@ -76,6 +76,28 @@ def test_initialize_profile_refuses_existing_profile_root(
         )
 
 
+def test_initialize_profile_registry_conflict_does_not_dirty_new_root(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    first_root = tmp_path / "profiles" / "air-one"
+    second_root = tmp_path / "profiles" / "air-two"
+    initialize_profile(
+        mode="air-offline",
+        root=first_root,
+        registry_path=isolated_registry_path,
+    )
+
+    with pytest.raises(ProfileError, match="profile name already registered: air"):
+        initialize_profile(
+            mode="air-offline",
+            root=second_root,
+            registry_path=isolated_registry_path,
+        )
+
+    assert not (second_root / "profile.json").exists()
+
+
 def test_resolve_and_doctor_air_profile(
     tmp_path: Path,
     isolated_registry_path: Path,

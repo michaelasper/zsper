@@ -15,7 +15,7 @@ from zsper.profiles import Profile
 from zsper.security.network_policy import check_network_policy, looks_like_url
 
 
-TOKEN_RE = re.compile(r"[A-Za-z0-9_./-]+")
+TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
 
 
 class BrainOfflineError(RuntimeError):

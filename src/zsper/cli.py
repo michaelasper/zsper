@@ -148,6 +148,10 @@ def _brain_ingest(namespace: argparse.Namespace) -> int:
     if profile.mode != "air-offline":
         return _placeholder(namespace)
 
+    if not namespace.path_or_url:
+        print("path-or-url is required for brain ingest", file=sys.stderr)
+        return 2
+
     try:
         document = ingest_local_file(profile, namespace.path_or_url)
     except BrainOfflineError as exc:

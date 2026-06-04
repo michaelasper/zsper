@@ -77,6 +77,29 @@ def test_air_file_search_returns_exact_local_matches(
     assert "Gemma offline retrieval" in results[0].snippet
 
 
+def test_air_file_search_treats_punctuation_as_delimiters(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    profile = initialize_profile(
+        mode="air-offline",
+        root=tmp_path / "air",
+        registry_path=isolated_registry_path,
+    )
+    source = tmp_path / "punctuation.md"
+    source.write_text("hello notes. charger-ready, offline/search.\n", encoding="utf-8")
+    ingest_local_file(profile, source)
+
+    notes_results = search_local_files(profile, "notes")
+    charger_results = search_local_files(profile, "charger")
+    search_results = search_local_files(profile, "search")
+
+    assert notes_results
+    assert charger_results
+    assert search_results
+    assert notes_results[0].source_path == str(source.resolve())
+
+
 @pytest.mark.parametrize(
     "target",
     [
