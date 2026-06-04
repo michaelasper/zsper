@@ -234,6 +234,12 @@ def _brain_handler(command: str):
     }.get(command, _placeholder)
 
 
+def _code_handler(command: str):
+    from zsper.code.commands import handler
+
+    return handler(command)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = _Parser(
         prog="zsper",
@@ -279,6 +285,8 @@ def _build_parser() -> argparse.ArgumentParser:
             )
             if group == "profile":
                 handler = _profile_handler(command)
+            elif group == "code":
+                handler = _code_handler(command)
             elif group == "brain":
                 handler = _brain_handler(command)
             else:

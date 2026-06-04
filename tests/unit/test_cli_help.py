@@ -20,7 +20,7 @@ GROUP_COMMANDS = {
 PLACEHOLDER_GROUP_COMMANDS = {
     group: commands
     for group, commands in GROUP_COMMANDS.items()
-    if group != "profile"
+    if group not in {"profile", "code"}
 }
 
 
@@ -71,7 +71,6 @@ def test_reserved_commands_return_milestone_placeholder(
 @pytest.mark.parametrize(
     ("argv", "profile"),
     [
-        (["code", "status", "--profile", "personal"], "personal"),
         (["brain", "search", "--profile", "air"], "air"),
         (["agent", "run", "--profile", "work"], "work"),
     ],
