@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
 
@@ -32,12 +33,106 @@ class _Parser(argparse.ArgumentParser):
 
 
 def _placeholder(namespace: argparse.Namespace) -> int:
+    if namespace.group == "brain" and namespace.command == "ingest":
+        policy_exit_code = _maybe_reject_ingest_by_profile_policy(namespace)
+        if policy_exit_code is not None:
+            return policy_exit_code
+
     profile = namespace.profile or "default"
     print(
         f"zsper {namespace.group} {namespace.command} is not implemented "
         f"in this milestone (profile={profile}).",
         file=sys.stderr,
     )
+    return 1
+
+
+def _profile_init(namespace: argparse.Namespace) -> int:
+    from zsper.profiles import ProfileError, initialize_profile
+
+    try:
+        profile = initialize_profile(
+            mode=namespace.mode,
+            root=namespace.root,
+            name=namespace.name,
+        )
+    except ProfileError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(f"created profile {profile.name} at {profile.root}")
+    return 0
+
+
+def _profile_list(namespace: argparse.Namespace) -> int:
+    del namespace
+    from zsper.profiles import ProfileError, list_profiles
+
+    try:
+        profiles = list_profiles()
+    except ProfileError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    for profile in profiles:
+        print(f"{profile.name}\t{profile.mode}\t{profile.root}")
+    return 0
+
+
+def _profile_show(namespace: argparse.Namespace) -> int:
+    from zsper.profiles import ProfileError, resolve_profile
+
+    try:
+        profile = resolve_profile(namespace.profile)
+    except ProfileError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(json.dumps(profile.to_dict(), indent=2, sort_keys=True))
+    return 0
+
+
+def _profile_doctor(namespace: argparse.Namespace) -> int:
+    from zsper.profiles import ProfileError, profile_doctor
+
+    try:
+        report = profile_doctor(namespace.profile)
+    except ProfileError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    if report.ok:
+        print(f"profile {report.profile.name} OK")
+        return 0
+
+    for error in report.errors:
+        print(error, file=sys.stderr)
+    return 1
+
+
+def _maybe_reject_ingest_by_profile_policy(namespace: argparse.Namespace) -> int | None:
+    from zsper.profiles import ProfileError, resolve_profile
+    from zsper.security.network_policy import check_network_policy, looks_like_url
+
+    if not namespace.profile or not namespace.path_or_url:
+        return None
+
+    try:
+        profile = resolve_profile(namespace.profile)
+    except ProfileError:
+        return None
+
+    action = "url-ingest" if looks_like_url(namespace.path_or_url) else "local-file-read"
+    decision = check_network_policy(
+        profile.network_policy,
+        namespace.path_or_url,
+        action=action,
+        user_triggered=True,
+    )
+    if decision.allowed:
+        return None
+
+    print(decision.reason, file=sys.stderr)
     return 1
 
 
@@ -48,8 +143,9 @@ def _configure_reserved_signature(
     command: str,
 ) -> None:
     if group == "profile" and command == "init":
-        command_parser.add_argument("--mode", choices=PROFILE_MODES)
-        command_parser.add_argument("--root")
+        command_parser.add_argument("--mode", choices=PROFILE_MODES, required=True)
+        command_parser.add_argument("--root", required=True)
+        command_parser.add_argument("--name")
         return
 
     if group == "brain" and command == "ingest":
@@ -68,6 +164,15 @@ def _configure_reserved_signature(
     if group == "agent" and command in {"attach", "status", "cancel"}:
         command_parser.add_argument("--run")
         return
+
+
+def _profile_handler(command: str):
+    return {
+        "init": _profile_init,
+        "list": _profile_list,
+        "show": _profile_show,
+        "doctor": _profile_doctor,
+    }[command]
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -113,7 +218,8 @@ def _build_parser() -> argparse.ArgumentParser:
                 group=group,
                 command=command,
             )
-            command_parser.set_defaults(func=_placeholder)
+            handler = _profile_handler(command) if group == "profile" else _placeholder
+            command_parser.set_defaults(func=handler)
 
     return parser
 

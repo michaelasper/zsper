@@ -17,6 +17,11 @@ GROUP_COMMANDS = {
     "brain": ("up", "down", "status", "ingest", "search", "answer"),
     "agent": ("run", "attach", "status", "cancel"),
 }
+PLACEHOLDER_GROUP_COMMANDS = {
+    group: commands
+    for group, commands in GROUP_COMMANDS.items()
+    if group != "profile"
+}
 
 
 @pytest.mark.parametrize("help_flag", ["--help", "-h"])
@@ -47,7 +52,7 @@ def test_group_help_shows_reserved_commands(
     ("group", "command"),
     [
         (group, command)
-        for group, commands in GROUP_COMMANDS.items()
+        for group, commands in PLACEHOLDER_GROUP_COMMANDS.items()
         for command in commands
     ],
 )
@@ -66,7 +71,6 @@ def test_reserved_commands_return_milestone_placeholder(
 @pytest.mark.parametrize(
     ("argv", "profile"),
     [
-        (["profile", "doctor", "--profile", "work"], "work"),
         (["code", "status", "--profile", "personal"], "personal"),
         (["brain", "search", "--profile", "air"], "air"),
         (["agent", "run", "--profile", "work"], "work"),
@@ -86,10 +90,6 @@ def test_operational_commands_accept_profile_option(
 @pytest.mark.parametrize(
     ("argv", "profile"),
     [
-        (
-            ["profile", "init", "--mode", "work", "--root", "/tmp/zsper-work"],
-            "default",
-        ),
         (["brain", "ingest", "README.md", "--profile", "work"], "work"),
         (["brain", "search", "hybrid retrieval", "--profile", "work"], "work"),
         (["brain", "answer", "what changed", "--profile", "work"], "work"),
@@ -110,7 +110,7 @@ def test_documented_reserved_command_shapes_reach_placeholder(
 
     assert exit_code == 1
     assert captured.out == ""
-    assert "not implemented in this milestone" in captured.err
     assert "error:" not in captured.err
+    assert "not implemented in this milestone" in captured.err
     assert f"zsper {argv[0]} {argv[1]}" in captured.err
     assert f"profile={profile}" in captured.err
