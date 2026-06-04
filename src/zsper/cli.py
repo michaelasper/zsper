@@ -21,6 +21,8 @@ GROUP_COMMANDS: dict[str, tuple[str, ...]] = {
     "brain": ("up", "down", "status", "ingest", "search", "answer"),
     "agent": ("run", "attach", "status", "cancel"),
 }
+PROFILE_MODES = ("work", "personal", "air-offline")
+AGENT_HARNESSES = ("pi", "opencode", "hermes")
 
 
 class _Parser(argparse.ArgumentParser):
@@ -37,6 +39,35 @@ def _placeholder(namespace: argparse.Namespace) -> int:
         file=sys.stderr,
     )
     return 1
+
+
+def _configure_reserved_signature(
+    command_parser: argparse.ArgumentParser,
+    *,
+    group: str,
+    command: str,
+) -> None:
+    if group == "profile" and command == "init":
+        command_parser.add_argument("--mode", choices=PROFILE_MODES)
+        command_parser.add_argument("--root")
+        return
+
+    if group == "brain" and command == "ingest":
+        command_parser.add_argument("path_or_url", nargs="?")
+        return
+
+    if group == "brain" and command in {"search", "answer"}:
+        command_parser.add_argument("query", nargs="*")
+        return
+
+    if group == "agent" and command == "run":
+        command_parser.add_argument("--harness", choices=AGENT_HARNESSES)
+        command_parser.add_argument("--task")
+        return
+
+    if group == "agent" and command in {"attach", "status", "cancel"}:
+        command_parser.add_argument("--run")
+        return
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -76,6 +107,11 @@ def _build_parser() -> argparse.ArgumentParser:
             command_parser.add_argument(
                 "--profile",
                 help="Profile name to resolve when this command is implemented.",
+            )
+            _configure_reserved_signature(
+                command_parser,
+                group=group,
+                command=command,
             )
             command_parser.set_defaults(func=_placeholder)
 

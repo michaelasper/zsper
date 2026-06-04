@@ -81,3 +81,36 @@ def test_operational_commands_accept_profile_option(
     assert exit_code == 1
     assert "not implemented in this milestone" in captured.err
     assert f"profile={profile}" in captured.err
+
+
+@pytest.mark.parametrize(
+    ("argv", "profile"),
+    [
+        (
+            ["profile", "init", "--mode", "work", "--root", "/tmp/zsper-work"],
+            "default",
+        ),
+        (["brain", "ingest", "README.md", "--profile", "work"], "work"),
+        (["brain", "search", "hybrid retrieval", "--profile", "work"], "work"),
+        (["brain", "answer", "what changed", "--profile", "work"], "work"),
+        (
+            ["agent", "run", "--harness", "pi", "--task", "123", "--profile", "work"],
+            "work",
+        ),
+        (["agent", "attach", "--run", "123", "--profile", "work"], "work"),
+        (["agent", "status", "--run", "123", "--profile", "work"], "work"),
+        (["agent", "cancel", "--run", "123", "--profile", "work"], "work"),
+    ],
+)
+def test_documented_reserved_command_shapes_reach_placeholder(
+    capsys, argv: list[str], profile: str
+) -> None:
+    exit_code = app(argv)
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert captured.out == ""
+    assert "not implemented in this milestone" in captured.err
+    assert "error:" not in captured.err
+    assert f"zsper {argv[0]} {argv[1]}" in captured.err
+    assert f"profile={profile}" in captured.err

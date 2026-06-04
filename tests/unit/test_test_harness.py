@@ -1,4 +1,7 @@
+import builtins
 import importlib
+import os
+import shutil
 import tomllib
 from collections.abc import Callable
 from pathlib import Path
@@ -82,6 +85,36 @@ def test_real_home_write_guard_blocks_other_write_operations_on_nonexistent_path
         operation(target)
 
     assert not target.exists()
+
+
+@pytest.mark.parametrize(
+    ("operation_name", "operation"),
+    (
+        pytest.param(
+            "builtins_open",
+            lambda path: builtins.open(path, "w", encoding="utf-8"),
+            id="builtins-open",
+        ),
+        pytest.param(
+            "os_makedirs",
+            lambda path: os.makedirs(path, exist_ok=True),
+            id="os-makedirs",
+        ),
+        pytest.param(
+            "shutil_copyfile",
+            lambda path: shutil.copyfile(__file__, path),
+            id="shutil-copyfile",
+        ),
+    ),
+)
+def test_real_home_write_guard_blocks_common_non_pathlib_write_apis(
+    operation_name: str,
+    operation: Callable[[Path], object],
+) -> None:
+    del operation_name
+
+    with pytest.raises(RuntimeError, match="Refusing to write under real user home"):
+        operation(REAL_USER_HOME)
 
 
 def test_real_home_write_guard_allows_explicit_opt_out_without_writing() -> None:
