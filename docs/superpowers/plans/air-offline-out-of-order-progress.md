@@ -26,6 +26,15 @@ local text files, search those local files, and reject networked ingest paths.
   - writes document metadata into `brain/documents/`;
   - appends audit events to `brain/ledgers/documents.jsonl`;
   - performs exact local token search without network calls.
+- `./setup.sh --air` out-of-order setup path:
+  - creates a project `.venv` wrapper unless `--no-venv` is used;
+  - creates or reuses the `air` profile;
+  - writes and ingests a profile-local readiness note;
+  - verifies `profile doctor` and local search before reporting readiness.
+- Air/offline documentation:
+  - README quick start for `./setup.sh --air`;
+  - how-to guide at `docs/runbooks/air-offline.md`;
+  - testing runbook coverage for the setup script.
 
 ## Deferred Back To The DAG
 
@@ -36,6 +45,7 @@ local text files, search those local files, and reject networked ingest paths.
 - Notes/tasks/memory records and UI views.
 - Mocked local model endpoint startup and agent-run launch.
 - Full integration test at `tests/integration/offline/test_air_offline_flows.py`.
+- Portable local model adapter startup for the laptop runtime.
 
 ## Current Verification
 
@@ -43,4 +53,6 @@ local text files, search those local files, and reject networked ingest paths.
 - `pytest tests/unit/security/test_network_policy.py -q`
 - `pytest tests/unit/brain/test_air_file_store.py -q`
 - `pytest tests/unit/test_cli_air_profile.py -q`
+- `pytest tests/unit/test_setup_air_script.py -q`
+- `pytest tests/unit/test_docs_links.py -q`
 - `pytest tests/unit -q`

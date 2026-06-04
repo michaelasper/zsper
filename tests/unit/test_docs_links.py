@@ -14,8 +14,17 @@ DAG = (
 PLATFORM_OVERVIEW = REPO_ROOT / "docs" / "architecture" / "platform-overview.md"
 LOCAL_DEVELOPMENT = REPO_ROOT / "docs" / "runbooks" / "local-development.md"
 TESTING = REPO_ROOT / "docs" / "runbooks" / "testing.md"
+AIR_OFFLINE = REPO_ROOT / "docs" / "runbooks" / "air-offline.md"
+README = REPO_ROOT / "README.md"
 
-REQUIRED_DOCS = (SPEC, DAG, PLATFORM_OVERVIEW, LOCAL_DEVELOPMENT, TESTING)
+REQUIRED_DOCS = (
+    SPEC,
+    DAG,
+    PLATFORM_OVERVIEW,
+    LOCAL_DEVELOPMENT,
+    TESTING,
+    AIR_OFFLINE,
+)
 REQUIRED_LINKS = (
     "docs/zsper-local-ai-platform-ultimate-spec.md",
     "docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md",
@@ -36,6 +45,7 @@ COMMAND_PURPOSES = {
     "`pytest tests/security -v`": "policy, redaction, and isolation gates",
     "`npm --prefix apps/brain-web test`": "Next.js Brain web flows",
     "`zsper profile doctor --profile work && zsper code smoke --profile work && zsper brain status --profile work && zsper agent status --profile work`": "full smoke verification",
+    "`./setup.sh --air`": "create or reuse the air profile",
 }
 
 
@@ -60,7 +70,7 @@ def test_referenced_local_docs_exist() -> None:
 
 
 def test_new_docs_link_to_source_spec_and_dag() -> None:
-    for path in (PLATFORM_OVERVIEW, LOCAL_DEVELOPMENT, TESTING):
+    for path in (PLATFORM_OVERVIEW, LOCAL_DEVELOPMENT, TESTING, AIR_OFFLINE):
         text = read_doc(path)
         resolved_targets = linked_local_targets(path)
         for link in REQUIRED_LINKS:
@@ -95,3 +105,15 @@ def test_testing_runbook_lists_exact_commands_with_purpose() -> None:
     for command, purpose in COMMAND_PURPOSES.items():
         assert command in testing
         assert purpose in testing
+
+
+def test_air_offline_docs_explain_setup_script_and_profile_flow() -> None:
+    readme = read_doc(README)
+    air_offline = read_doc(AIR_OFFLINE)
+
+    assert "./setup.sh --air" in readme
+    assert "docs/runbooks/air-offline.md" in readme
+    assert "./setup.sh --air" in air_offline
+    assert "zsper brain ingest --profile air" in air_offline
+    assert "zsper brain search --profile air" in air_offline
+    assert "ZSPER_AIR_ROOT" in air_offline
