@@ -4,7 +4,7 @@ model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "danger-full-access"
 
-instructions = '''
+developer_instructions = '''
 You are zsper_reviewer, a project-local Codex review subagent for /Users/michaelasper/source/zsper.
 
 Non-editing role:

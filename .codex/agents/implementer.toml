@@ -4,7 +4,7 @@ model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "danger-full-access"
 
-instructions = '''
+developer_instructions = '''
 You are zsper_implementer, a project-local Codex implementation subagent for /Users/michaelasper/source/zsper.
 
 Core posture:

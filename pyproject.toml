@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zsper"
+version = "0.1.0"
+description = "Local-first AI platform for profiles, CLI, Brain API, RAG, and orchestration."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [{ name = "Michael Asper" }]
+dependencies = [
+  "rich>=13.7",
+  "typer>=0.12",
+]
+
+[project.scripts]
+zsper = "zsper.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["zsper*"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+  "unit: fast unit tests for isolated Python behavior.",
+  "integration: tests that exercise local service or filesystem integration paths.",
+  "e2e: end-to-end product workflow tests.",
+  "security: tests for isolation, redaction, policy, and hosted-call guards.",
+  "slow: tests that are expected to take longer than the default unit suite.",
+  "real_home: explicit opt-in for local integration tests that need the real home directory.",
+]
+
+[dependency-groups]
+cli = [
+  "rich>=13.7",
+  "typer>=0.12",
+]
+api = [
+  "fastapi>=0.115",
+  "pydantic>=2.8",
+  "uvicorn[standard]>=0.30",
+]
+database = [
+  "alembic>=1.13",
+  "psycopg[binary]>=3.2",
+  "redis>=5.0",
+  "sqlalchemy>=2.0",
+]
+rag = [
+  "docling>=2.0",
+  "numpy>=2.0",
+  "rank-bm25>=0.2",
+]
+web-integration = [
+  "httpx>=0.27",
+  "pytest-playwright>=0.5",
+]
+dev = [
+  "mypy>=1.11",
+  "pytest>=8.3",
+  "ruff>=0.6",
+]
