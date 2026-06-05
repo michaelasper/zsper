@@ -15,7 +15,13 @@ from zsper.brain.api import (
     resolve_api_profile_context,
 )
 from zsper.brain.redis import RedisRuntimeConfig, redis_config_from_env
-from zsper.rag import HybridSearchEngine, ProfileRagStore
+from zsper.config.model_endpoint import ModelEndpoint, endpoints_for_profile
+from zsper.rag import (
+    AnswerModelClient,
+    HybridSearchEngine,
+    OpenAICompatibleAnswerModelClient,
+    ProfileRagStore,
+)
 from zsper.rag.embeddings import EmbeddingProvider, provider_for_profile
 from zsper.rag.indexes import ProfileBm25Index, ProfileVectorIndex
 
@@ -117,6 +123,25 @@ def get_hybrid_search_engine(
         vector_index=vector_index,
         query_embedding_provider=query_embedding_provider,
     )
+
+
+def get_answer_endpoint(
+    context: ApiProfileContext = Depends(get_profile_context),
+) -> ModelEndpoint:
+    endpoint = endpoints_for_profile(context.profile)[0]
+    return ModelEndpoint(
+        provider_id=endpoint.provider_id,
+        base_url=context.model_base_url,
+        model_id=endpoint.model_id,
+        context_window=endpoint.context_window,
+        output_limit=endpoint.output_limit,
+        tool_support=endpoint.tool_support,
+        health_path=endpoint.health_path,
+    )
+
+
+def get_answer_model_client() -> AnswerModelClient:
+    return OpenAICompatibleAnswerModelClient()
 
 
 def _profile_index_path(context: ApiProfileContext, filename: str) -> Path:

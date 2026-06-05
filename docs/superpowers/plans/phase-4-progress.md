@@ -20,7 +20,7 @@ Milestone: M4 Documents, RAG, And Citations
 | RAG-010 | BM25 Index | RAG-007 | Complete | `pytest tests/unit/rag/test_bm25.py -q` -> 3 passed | PASS | `feat(rag): add citations embeddings and bm25` |
 | RAG-011 | Dense Vector Index | RAG-009, BRAIN-002 | Complete | `pytest tests/unit/rag/test_vector_index.py tests/integration/rag/test_pgvector.py -q` -> 5 passed, 1 skipped | PASS | `feat(rag): add vector index and documents api` |
 | RAG-012 | Hybrid Search | RAG-010, RAG-011 | Complete | `pytest tests/unit/rag/test_hybrid_search.py -q` -> 6 passed | PASS | `feat(rag): add hybrid search` |
-| RAG-013 | Citation-Grounded Answer Flow | RAG-008, RAG-012, CODE-001 | Pending | Pending | Pending | Pending |
+| RAG-013 | Citation-Grounded Answer Flow | RAG-008, RAG-012, CODE-001 | Complete | `pytest tests/unit/rag/test_answer.py -q` -> 7 passed | PASS | `feat(rag): add citation-grounded answers` |
 | RAG-014 | Documents And Citations API | RAG-008, BRAIN-005 | Complete | `pytest tests/unit/brain/test_documents_citations_api.py -q` -> 4 passed | PASS | `feat(rag): add vector index and documents api` |
 | RAG-015 | Brain Ingest/Search/Answer CLI | RAG-012, RAG-013, RAG-014, FND-004 | Pending | Pending | Pending | Pending |
 | RAG-016 | Citation Inspection UI | BRAIN-008, RAG-013, RAG-014 | Pending | Pending | Pending | Pending |
@@ -109,6 +109,16 @@ Milestone: M4 Documents, RAG, And Citations
   verification:
   `pytest tests/unit/rag/test_hybrid_search.py tests/unit/rag/test_bm25.py tests/unit/rag/test_vector_index.py tests/unit/rag/test_citations.py -q`
   -> 18 passed.
+- 2026-06-05: Implemented and reviewed `RAG-013`. Citation-grounded answers now
+  search retrieved chunks, call the local OpenAI-compatible chat completions
+  endpoint, and return structured citation objects with document, chunk,
+  citation anchor, source, range, preview, answer confidence, and separate
+  citation confidence. Review found two grounding gaps: empty retrieval could
+  still call the model, and the prompt sent only preview text. The fix now
+  requires retrieved context before model calls and sends full stored chunk text
+  to the model while keeping public citations compact. Local verification:
+  `pytest tests/unit/test_cli_help.py tests/unit/rag/test_answer.py -q`
+  -> 25 passed.
 
 ## Acceptance Gates
 

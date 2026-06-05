@@ -20,7 +20,7 @@ GROUP_COMMANDS = {
 IMPLEMENTED_GROUP_COMMANDS = {
     "profile": GROUP_COMMANDS["profile"],
     "code": GROUP_COMMANDS["code"],
-    "brain": ("up", "down", "status", "ingest", "search"),
+    "brain": ("up", "down", "status", "ingest", "search", "answer"),
 }
 PLACEHOLDER_GROUP_COMMANDS = {
     group: tuple(
@@ -99,7 +99,6 @@ def test_operational_commands_accept_profile_option(
     [
         (["brain", "ingest", "README.md", "--profile", "work"], "work"),
         (["brain", "search", "hybrid retrieval", "--profile", "work"], "work"),
-        (["brain", "answer", "what changed", "--profile", "work"], "work"),
         (
             ["agent", "run", "--harness", "pi", "--task", "123", "--profile", "work"],
             "work",

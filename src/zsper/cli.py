@@ -245,7 +245,48 @@ def _brain_search(namespace: argparse.Namespace) -> int:
     return 0
 
 
+def _brain_answer(namespace: argparse.Namespace) -> int:
+    from zsper.config.user import UserConfigError
+    from zsper.profiles import ProfileError, resolve_profile
+    from zsper.rag import AnswerError, HybridSearchError
+
+    try:
+        profile = resolve_profile(_profile_ref_for_command(namespace.profile))
+    except UserConfigError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except ProfileError:
+        return _placeholder(namespace)
+
+    question = " ".join(namespace.query).strip()
+    if not question:
+        print("query is required for brain answer", file=sys.stderr)
+        return 2
+
+    try:
+        answer = _answer_question_profile(profile, question)
+    except (AnswerError, HybridSearchError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(json.dumps(answer.to_dict(), indent=2, sort_keys=True))
+    return 0
+
+
 def _hybrid_search_profile(profile, query: str):
+    engine, _store = _hybrid_search_components(profile)
+    return engine.search(profile, query)
+
+
+def _answer_question_profile(profile, question: str):
+    from zsper.rag import answer_question
+
+    engine, store = _hybrid_search_components(profile)
+    results = engine.search(profile, question)
+    return answer_question(profile, store, question, results)
+
+
+def _hybrid_search_components(profile):
     import os
     from pathlib import Path
 
@@ -282,7 +323,7 @@ def _hybrid_search_profile(profile, query: str):
         vector_index=vector_index,
         query_embedding_provider=provider_for_profile(profile),
     )
-    return engine.search(profile, query)
+    return engine, store
 
 
 def _configure_reserved_signature(
@@ -352,6 +393,7 @@ def _brain_handler(command: str):
     return {
         "ingest": _brain_ingest,
         "search": _brain_search,
+        "answer": _brain_answer,
     }.get(command, _placeholder)
 
 
