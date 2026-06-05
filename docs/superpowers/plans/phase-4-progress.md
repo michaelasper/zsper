@@ -11,7 +11,7 @@ Milestone: M4 Documents, RAG, And Citations
 | RAG-001 | RAG Store And Models | BRAIN-002, BRAIN-004, GATE-001 | Complete | `pytest tests/unit/rag/test_store.py tests/unit/test_phase4_progress_doc.py -q` -> 8 passed | PASS | `feat(rag): add document store` |
 | RAG-002 | Raw Asset Capture | RAG-001 | Complete | `pytest tests/unit/rag/test_assets.py -q` -> 3 passed | PASS | `feat(rag): add asset capture and policy gates` |
 | RAG-003 | RAG Policy Gate | SEC-002, RAG-001 | Complete | `pytest tests/unit/rag/test_policy.py -q` -> 10 passed | PASS | `feat(rag): add asset capture and policy gates` |
-| RAG-004 | Parser Selector And Text Parser | RAG-002, RAG-003 | Pending | Pending | Pending | Pending |
+| RAG-004 | Parser Selector And Text Parser | RAG-002, RAG-003 | Complete | `pytest tests/unit/rag/test_parser_selector.py -q` -> 26 passed | PASS | `feat(rag): add parser selection` |
 | RAG-005 | Docling Parser Adapter | RAG-004 | Pending | Pending | Pending | Pending |
 | RAG-006 | Local Web Capture And Research Bridge | RAG-003, RAG-004 | Pending | Pending | Pending | Pending |
 | RAG-007 | Deterministic Chunking | RAG-004, RAG-005, RAG-006 | Pending | Pending | Pending | Pending |
@@ -50,6 +50,12 @@ Milestone: M4 Documents, RAG, And Citations
   reviewer passes returned PASS. Local verification:
   `pytest tests/unit/rag/test_assets.py tests/unit/rag/test_policy.py tests/unit/rag/test_store.py -q`
   -> 20 passed.
+- 2026-06-05: Implemented and reviewed `RAG-004`. Parser selection routes text,
+  Markdown, JSON, YAML, and source files to the local text parser; PDFs, Office
+  files, and complex HTML to future Docling; allowed URLs to future web capture;
+  and repo paths to future repo parsing. Local verification:
+  `pytest tests/unit/rag/test_parser_selector.py tests/unit/rag/test_assets.py tests/unit/rag/test_policy.py -q`
+  -> 39 passed.
 - Parallelization point: after `RAG-007`, dispatch `RAG-008`, `RAG-009`, and
   `RAG-010` in parallel where write scopes remain disjoint.
 
