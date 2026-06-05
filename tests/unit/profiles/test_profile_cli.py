@@ -49,3 +49,10 @@ def test_profile_cli_errors_do_not_leak_secret_values(
     captured = capsys.readouterr()
 
     assert "super-secret-value" not in captured.out
+
+
+def test_profile_doctor_requires_profile_ref(capsys) -> None:
+    assert app(["profile", "doctor"]) == 1
+
+    captured = capsys.readouterr()
+    assert "profile name or root is required" in captured.err

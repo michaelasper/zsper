@@ -41,6 +41,24 @@ def test_personal_profile_can_expose_long_context_fallback(tmp_path: Path) -> No
     assert endpoints[1].context_window == 262144
 
 
+def test_endpoints_use_profile_specific_model_ids(tmp_path: Path) -> None:
+    profile = default_profile(
+        mode="personal",
+        root=tmp_path / "personal",
+        overrides={
+            "model_profile": "zsper-custom-primary",
+            "long_context_fallback": "zsper-custom-long",
+        },
+    )
+
+    endpoints = endpoints_for_profile(profile, include_fallback=True)
+
+    assert [endpoint.model_id for endpoint in endpoints] == [
+        "zsper-custom-primary",
+        "zsper-custom-long",
+    ]
+
+
 def test_air_offline_profile_uses_air_endpoint(tmp_path: Path) -> None:
     profile = default_profile(mode="air-offline", root=tmp_path / "air")
 
@@ -50,3 +68,16 @@ def test_air_offline_profile_uses_air_endpoint(tmp_path: Path) -> None:
     assert endpoints[0].provider_id == "zsper-air-code"
     assert endpoints[0].model_id == AIR_MODEL_ID
     assert endpoints[0].context_window == 131072
+
+
+def test_air_offline_endpoint_uses_profile_specific_model_id(tmp_path: Path) -> None:
+    profile = default_profile(
+        mode="air-offline",
+        root=tmp_path / "air",
+        overrides={"model_profile": "zsper-air-custom"},
+    )
+
+    endpoints = endpoints_for_profile(profile)
+
+    assert len(endpoints) == 1
+    assert endpoints[0].model_id == "zsper-air-custom"

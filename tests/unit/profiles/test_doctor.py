@@ -81,3 +81,39 @@ def test_doctor_reports_invalid_policy_and_forbidden_hosted_config(
     assert report.ok is False
     assert any("work profiles default to disabled" in error for error in report.errors)
     assert any("forbidden hosted dependency" in error for error in report.errors)
+
+
+def test_doctor_does_not_flag_hosted_dependencies_in_profile_name_or_root(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    initialize_profile(
+        mode="work",
+        name="linear-work",
+        root=tmp_path / "linear-work",
+        registry_path=isolated_registry_path,
+    )
+
+    report = profile_doctor("linear-work", registry_path=isolated_registry_path)
+
+    assert report.ok is True
+    assert not any("forbidden hosted dependency" in error for error in report.errors)
+
+
+def test_doctor_preserves_resolver_errors_when_raw_profile_can_be_loaded(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    profile = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+    registry = json.loads(isolated_registry_path.read_text(encoding="utf-8"))
+    registry["profiles"][0]["root"] = str(tmp_path / "other-work-root")
+    isolated_registry_path.write_text(json.dumps(registry), encoding="utf-8")
+
+    report = profile_doctor(profile.root, registry_path=isolated_registry_path)
+
+    assert report.ok is False
+    assert any("registry entry root mismatch" in error for error in report.errors)

@@ -23,6 +23,28 @@ FORBIDDEN_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     "OpenClaw": ("openclaw",),
 }
 SCANNED_EXTENSIONS = frozenset({".py", ".json", ".toml", ".yaml", ".yml", ".md"})
+EXPLICIT_SETTING_KEY_NEEDLES = frozenset(
+    {
+        "api",
+        "apis",
+        "base_url",
+        "connector",
+        "connectors",
+        "endpoint",
+        "endpoints",
+        "host",
+        "integration",
+        "integrations",
+        "plugin",
+        "plugins",
+        "provider",
+        "providers",
+        "service",
+        "services",
+        "uri",
+        "url",
+    }
+)
 POLICY_DEFINITION_FILES = frozenset(
     {
         Path("security/hosted_dependencies.py"),
@@ -95,10 +117,59 @@ def scan_for_forbidden_hosted_dependencies(
     return findings
 
 
+def _looks_like_url(value: str) -> bool:
+    lowered = value.strip().lower()
+    return lowered.startswith(("http://", "https://"))
+
+
+def _is_explicit_settings_key(key: str) -> bool:
+    lowered = key.lower()
+    if any(needle in lowered for needle in EXPLICIT_SETTING_KEY_NEEDLES):
+        return True
+    return any(
+        needle in lowered
+        for needles in FORBIDDEN_DEPENDENCIES.values()
+        for needle in needles
+    )
+
+
+def _iter_hosted_setting_text(value: object, *, explicit: bool = False) -> list[str]:
+    if isinstance(value, dict):
+        texts: list[str] = []
+        for key, child in value.items():
+            key_text = str(key)
+            child_explicit = explicit or _is_explicit_settings_key(key_text)
+            if child_explicit:
+                texts.append(key_text.lower())
+            texts.extend(
+                _iter_hosted_setting_text(child, explicit=child_explicit)
+            )
+        return texts
+
+    if isinstance(value, (list, tuple, set)):
+        texts = []
+        for item in value:
+            texts.extend(_iter_hosted_setting_text(item, explicit=explicit))
+        return texts
+
+    if isinstance(value, str):
+        if explicit or _looks_like_url(value):
+            return [value.lower()]
+        return []
+
+    if explicit and value is not None:
+        return [repr(value).lower()]
+    return []
+
+
 def find_forbidden_hosted_settings(value: object) -> list[str]:
-    rendered = repr(value).lower()
+    rendered_settings = _iter_hosted_setting_text(value)
     findings: list[str] = []
     for dependency, needles in FORBIDDEN_DEPENDENCIES.items():
-        if any(needle in rendered for needle in needles):
+        if any(
+            needle in rendered
+            for rendered in rendered_settings
+            for needle in needles
+        ):
             findings.append(dependency)
     return findings

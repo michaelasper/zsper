@@ -24,33 +24,33 @@ class ModelEndpoint:
     health_path: str = "/models"
 
     @classmethod
-    def primary(cls) -> "ModelEndpoint":
+    def primary(cls, model_id: str = PRIMARY_MODEL_ID) -> "ModelEndpoint":
         return cls(
             provider_id="zsper-code",
             base_url=LOCAL_BASE_URL,
-            model_id=PRIMARY_MODEL_ID,
+            model_id=model_id,
             context_window=131072,
             output_limit=4096,
             tool_support=True,
         )
 
     @classmethod
-    def long_context(cls) -> "ModelEndpoint":
+    def long_context(cls, model_id: str = LONG_CONTEXT_MODEL_ID) -> "ModelEndpoint":
         return cls(
             provider_id="zsper-code-long",
             base_url=LOCAL_BASE_URL,
-            model_id=LONG_CONTEXT_MODEL_ID,
+            model_id=model_id,
             context_window=262144,
             output_limit=4096,
             tool_support=True,
         )
 
     @classmethod
-    def air(cls) -> "ModelEndpoint":
+    def air(cls, model_id: str = AIR_MODEL_ID) -> "ModelEndpoint":
         return cls(
             provider_id="zsper-air-code",
             base_url=LOCAL_BASE_URL,
-            model_id=AIR_MODEL_ID,
+            model_id=model_id,
             context_window=131072,
             output_limit=4096,
             tool_support=True,
@@ -82,9 +82,11 @@ def endpoints_for_profile(
     include_fallback: bool = False,
 ) -> list[ModelEndpoint]:
     if profile.mode == "air-offline":
-        return [ModelEndpoint.air()]
+        return [ModelEndpoint.air(model_id=profile.model_profile)]
 
-    endpoints = [ModelEndpoint.primary()]
+    endpoints = [ModelEndpoint.primary(model_id=profile.model_profile)]
     if include_fallback and profile.long_context_fallback:
-        endpoints.append(ModelEndpoint.long_context())
+        endpoints.append(
+            ModelEndpoint.long_context(model_id=profile.long_context_fallback)
+        )
     return endpoints
