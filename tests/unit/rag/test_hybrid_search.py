@@ -10,7 +10,9 @@ from fastapi.testclient import TestClient
 import pytest
 
 from zsper.profiles import Profile, initialize_profile
+from zsper.rag import HybridSearchError
 from zsper.rag.indexes import ProfileBm25Index, ProfileVectorIndex
+from zsper.rag.indexes import VectorIndexError
 from zsper.rag.models import CitationAnchor, Document, DocumentChunk
 from zsper.rag.store import ProfileRagStore
 
@@ -50,6 +52,14 @@ class _StaticQueryEmbeddingProvider:
             tuple(float(value) for value in self._vectors_by_text[text])
             for text in texts
         )
+
+
+class _BrokenVectorIndex:
+    database_path: Path | None = None
+
+    def search(self, *args: Any, **kwargs: Any) -> list[Any]:
+        del args, kwargs
+        raise VectorIndexError("dense index unavailable")
 
 
 def _hybrid_api() -> tuple[Any, Any]:
@@ -117,6 +127,7 @@ def _indexed_fixture(
     profile: Profile,
     *,
     use_profile_index_paths: bool = False,
+    vector_dimensions: int = 3,
 ) -> _IndexedFixture:
     if use_profile_index_paths:
         index_root = Path(profile.root) / "brain" / "indexes"
@@ -172,9 +183,9 @@ def _indexed_fixture(
         document,
         chunks,
         vectors_by_chunk_id={
-            exact_chunk.id: (0.0, 0.0, 1.0),
-            semantic_chunk.id: (1.0, 0.0, 0.0),
-            unrelated_chunk.id: (0.0, 1.0, 0.0),
+            exact_chunk.id: _axis_vector(vector_dimensions, 2),
+            semantic_chunk.id: _axis_vector(vector_dimensions, 0),
+            unrelated_chunk.id: _axis_vector(vector_dimensions, 1),
         },
     )
     return _IndexedFixture(
@@ -190,6 +201,12 @@ def _indexed_fixture(
         semantic_chunk=semantic_chunk,
         unrelated_chunk=unrelated_chunk,
     )
+
+
+def _axis_vector(dimensions: int, active_index: int) -> tuple[float, ...]:
+    values = [0.0] * dimensions
+    values[active_index] = 1.0
+    return tuple(values)
 
 
 def _service_env(
@@ -280,6 +297,31 @@ def test_hybrid_search_returns_dense_semantic_matches_with_component_scores(
     assert result.text_preview == fixture.semantic_chunk.text
 
 
+def test_hybrid_search_reports_dense_index_errors_when_dense_query_requested(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    HybridSearchEngine, _ = _hybrid_api()
+    profile = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+    fixture = _indexed_fixture(tmp_path, profile)
+    engine = HybridSearchEngine(
+        store=fixture.store,
+        bm25_index=fixture.bm25_index,
+        vector_index=_BrokenVectorIndex(),
+        query_embedding_provider=_StaticQueryEmbeddingProvider(
+            model=profile.embedding_profile,
+            vectors_by_text={"semantic source locator": (1.0, 0.0, 0.0)},
+        ),
+    )
+
+    with pytest.raises(HybridSearchError, match="dense vector search failed"):
+        engine.search(profile, "semantic source locator", limit=2)
+
+
 def test_search_api_route_delegates_to_hybrid_search(
     tmp_path: Path,
     isolated_registry_path: Path,
@@ -332,7 +374,11 @@ def test_search_api_uses_profile_local_sqlite_rag_store_for_air_default_paths(
         root=tmp_path / "air",
         registry_path=isolated_registry_path,
     )
-    fixture = _indexed_fixture(tmp_path, profile, use_profile_index_paths=True)
+    fixture = _indexed_fixture(
+        tmp_path,
+        profile,
+        use_profile_index_paths=True,
+    )
     env = _service_env(fixture, isolated_registry_path)
     env.pop("ZSPER_RAG_SQLITE_PATH")
     env.pop("ZSPER_BM25_SQLITE_PATH")
@@ -377,7 +423,7 @@ def test_cli_brain_search_uses_hybrid_index_for_resolved_profiles(
         root=tmp_path / "work",
         registry_path=isolated_registry_path,
     )
-    fixture = _indexed_fixture(tmp_path, profile)
+    fixture = _indexed_fixture(tmp_path, profile, vector_dimensions=384)
     monkeypatch.setenv("ZSPER_RAG_SQLITE_PATH", str(fixture.rag_db_path))
     monkeypatch.setenv("ZSPER_BM25_SQLITE_PATH", str(fixture.bm25_db_path))
     monkeypatch.setenv("ZSPER_VECTOR_SQLITE_PATH", str(fixture.vector_db_path))
@@ -419,7 +465,12 @@ def test_cli_brain_search_uses_hybrid_index_for_air_profile_default_paths(
         root=tmp_path / "air",
         registry_path=isolated_registry_path,
     )
-    fixture = _indexed_fixture(tmp_path, profile, use_profile_index_paths=True)
+    fixture = _indexed_fixture(
+        tmp_path,
+        profile,
+        use_profile_index_paths=True,
+        vector_dimensions=384,
+    )
 
     exit_code = app(
         [

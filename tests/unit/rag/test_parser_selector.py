@@ -113,6 +113,17 @@ def test_repo_docs_route_to_repo_parser(tmp_path: Path) -> None:
     assert "repo" in route.reason
 
 
+def test_existing_directory_auto_routes_to_repo_parser(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Repo\n", encoding="utf-8")
+
+    route = select_parser(repo, profile=_profile("work", tmp_path))
+
+    assert route.parser == "repo"
+    assert route.source_type == "repo"
+
+
 def test_unsupported_input_returns_actionable_error(tmp_path: Path) -> None:
     with pytest.raises(ParserSelectionError) as exc_info:
         select_parser(

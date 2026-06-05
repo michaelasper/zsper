@@ -79,6 +79,27 @@ def test_capture_local_files_copies_markdown_pdf_and_source_to_profile_assets(
     }
 
 
+@pytest.mark.parametrize("suffix", [".rtf", ".odt", ".odp", ".ods"])
+def test_capture_local_asset_uses_docling_for_selector_docling_suffixes(
+    suffix: str,
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    profile = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+    store = ProfileRagStore.sqlite(tmp_path / "rag.sqlite")
+    source = tmp_path / f"reference{suffix}"
+    source.write_bytes(b"docling fixture bytes\n")
+
+    document = capture_local_asset(profile, store, source)
+
+    assert document.parser == "docling"
+    assert Path(document.raw_asset_path).suffix == suffix
+
+
 def test_reingesting_unchanged_local_file_returns_existing_document_version(
     tmp_path: Path,
     isolated_registry_path: Path,

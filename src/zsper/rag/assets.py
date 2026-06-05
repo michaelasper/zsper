@@ -11,25 +11,14 @@ from typing import Final
 
 from zsper.profiles import Profile
 from zsper.rag.models import Document
+from zsper.rag.parsers.selector import DOCLING_EXTENSIONS
 from zsper.rag.store import ProfileRagStore
 
 
 _SAFE_SUFFIX_RE: Final[re.Pattern[str]] = re.compile(
     r"^\.[A-Za-z0-9][A-Za-z0-9._+-]{0,31}$"
 )
-_DOCLING_SUFFIXES: Final[frozenset[str]] = frozenset(
-    {
-        ".doc",
-        ".docx",
-        ".htm",
-        ".html",
-        ".pdf",
-        ".ppt",
-        ".pptx",
-        ".xls",
-        ".xlsx",
-    }
-)
+_FILE_PARSERS: Final[frozenset[str]] = frozenset({"text", "docling"})
 
 
 class RawAssetCaptureError(ValueError):
@@ -41,10 +30,12 @@ def capture_local_asset(
     store: ProfileRagStore,
     source: str | Path,
     *,
+    parser: str | None = None,
     title: str | None = None,
 ) -> Document:
     _reject_path_traversal(source)
     source_path = _resolve_local_file(source)
+    selected_parser = _resolve_parser(source_path, parser)
     content = source_path.read_bytes()
     content_hash = _content_hash(content)
 
@@ -53,6 +44,7 @@ def capture_local_asset(
         store,
         source_path=source_path,
         content_hash=content_hash,
+        parser=selected_parser,
     )
     if existing is not None:
         return existing
@@ -95,7 +87,7 @@ def capture_local_asset(
         title=resolved_title,
         metadata=metadata,
         content_hash=content_hash,
-        parser=_parser_for(source_path),
+        parser=selected_parser,
         created_at=captured_at,
         updated_at=captured_at,
     )
@@ -182,8 +174,15 @@ def _resolve_title(source_path: Path, title: str | None) -> str:
     return source_path.stem or source_path.name
 
 
-def _parser_for(source_path: Path) -> str:
-    if source_path.suffix.lower() in _DOCLING_SUFFIXES:
+def _resolve_parser(source_path: Path, parser: str | None) -> str:
+    if parser is not None:
+        if parser not in _FILE_PARSERS:
+            allowed = ", ".join(sorted(_FILE_PARSERS))
+            raise RawAssetCaptureError(
+                f"local file parser must be one of: {allowed}"
+            )
+        return parser
+    if source_path.suffix.lower() in DOCLING_EXTENSIONS:
         return "docling"
     return "text"
 
@@ -194,12 +193,14 @@ def _existing_local_document(
     *,
     source_path: Path,
     content_hash: str,
+    parser: str,
 ) -> Document | None:
     original_path = str(source_path)
     for document in store.list_documents(profile):
         if (
             document.source_type == "file"
             and document.content_hash == content_hash
+            and document.parser == parser
             and document.metadata.get("original_path") == original_path
         ):
             return document

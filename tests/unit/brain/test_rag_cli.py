@@ -6,8 +6,12 @@ from pathlib import Path
 
 import pytest
 
+from zsper.brain.compose import brain_ports_for_profile
+from zsper.brain.rag_commands import components_for_profile
 from zsper.cli import app
 from zsper.profiles import initialize_profile
+from zsper.rag import ProfileRagStore
+from zsper.rag.indexes import ProfileVectorIndex
 
 
 def _init_profile(
@@ -16,12 +20,19 @@ def _init_profile(
     tmp_path: Path,
     *,
     mode: str = "work",
+    sqlite_overrides: bool = True,
 ) -> Path:
     monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
     monkeypatch.delenv("POSTGRES_DSN", raising=False)
     monkeypatch.delenv("ZSPER_RAG_SQLITE_PATH", raising=False)
     monkeypatch.delenv("ZSPER_BM25_SQLITE_PATH", raising=False)
     monkeypatch.delenv("ZSPER_VECTOR_SQLITE_PATH", raising=False)
+    if sqlite_overrides:
+        monkeypatch.setenv("ZSPER_RAG_SQLITE_PATH", str(tmp_path / mode / "rag.sqlite"))
+        monkeypatch.setenv(
+            "ZSPER_VECTOR_SQLITE_PATH",
+            str(tmp_path / mode / "vectors.sqlite"),
+        )
     profile = initialize_profile(
         mode=mode,
         root=tmp_path / mode,
@@ -39,6 +50,24 @@ def _markdown_fixture(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     return source
+
+
+def _repo_fixture(tmp_path: Path) -> Path:
+    repo = tmp_path / "fixture-repo"
+    docs = repo / "docs"
+    ignored = repo / ".git"
+    docs.mkdir(parents=True)
+    ignored.mkdir()
+    (repo / "README.md").write_text(
+        "# Fixture Repo\n\nRepo ingestion keeps air profile sources local.\n",
+        encoding="utf-8",
+    )
+    (docs / "guide.md").write_text(
+        "# Air Guide\n\nThe portable cabin checklist confirms repo docs ingestion.\n",
+        encoding="utf-8",
+    )
+    (ignored / "config").write_text("do not index git internals\n", encoding="utf-8")
+    return repo
 
 
 def test_markdown_fixture_ingests_and_searches_through_cli(
@@ -67,6 +96,32 @@ def test_markdown_fixture_ingests_and_searches_through_cli(
     assert str(source) in search.out
     assert "\tchunk-" in search.out
     assert "\tanchor-" in search.out
+
+
+def test_repo_directory_ingests_and_searches_through_cli(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    _init_profile(
+        monkeypatch,
+        isolated_registry_path,
+        tmp_path,
+    )
+    repo = _repo_fixture(tmp_path)
+
+    assert app(["brain", "ingest", str(repo), "--profile", "work"]) == 0
+    ingest = capsys.readouterr()
+    assert ingest.err == ""
+    assert "ingested document" in ingest.out
+    assert str(repo.resolve()) in ingest.out
+
+    assert app(["brain", "search", "portable", "cabin", "--profile", "work"]) == 0
+    search = capsys.readouterr()
+    assert search.err == ""
+    assert "portable cabin checklist" in search.out
+    assert str(repo.resolve()) in search.out
 
 
 def test_answer_cli_returns_citation_objects_from_ingested_markdown(
@@ -193,6 +248,62 @@ def test_rag_cli_rejects_hosted_libpq_dsn_query_params_before_connecting(
 
     assert captured.out == ""
     assert "Postgres DSN must point at a local service" in captured.err
+
+
+def test_rag_cli_uses_profile_postgres_backend_without_exported_dsn(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
+    monkeypatch.delenv("POSTGRES_DSN", raising=False)
+    monkeypatch.delenv("ZSPER_RAG_SQLITE_PATH", raising=False)
+    monkeypatch.delenv("ZSPER_BM25_SQLITE_PATH", raising=False)
+    monkeypatch.delenv("ZSPER_VECTOR_SQLITE_PATH", raising=False)
+    profile = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+    store_dsns: list[str] = []
+    vector_dsns: list[str] = []
+
+    def fake_store_postgres_dsn(dsn: str) -> ProfileRagStore:
+        store_dsns.append(dsn)
+        return ProfileRagStore(
+            database_path=None,
+            backend="postgres",
+            connection_factory=lambda: None,
+        )
+
+    def fake_vector_postgres_dsn(dsn: str) -> ProfileVectorIndex:
+        vector_dsns.append(dsn)
+        return ProfileVectorIndex(
+            database_path=None,
+            backend="postgres",
+            connection_factory=lambda: None,
+        )
+
+    monkeypatch.setattr(
+        "zsper.brain.rag_commands.ProfileRagStore.postgres_dsn",
+        fake_store_postgres_dsn,
+    )
+    monkeypatch.setattr(
+        "zsper.brain.rag_commands.ProfileVectorIndex.postgres_dsn",
+        fake_vector_postgres_dsn,
+    )
+
+    components = components_for_profile(profile)
+
+    ports = brain_ports_for_profile(profile)
+    expected_dsn = (
+        "postgresql://zsper:zsper-local-only@"
+        f"127.0.0.1:{ports.postgres}/{profile.database_name}"
+    )
+    assert store_dsns == [expected_dsn]
+    assert vector_dsns == [expected_dsn]
+    assert components.store.backend == "postgres"
+    assert components.vector_index.backend == "postgres"
 
 
 def test_brain_rag_help_describes_implemented_commands(

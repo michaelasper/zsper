@@ -163,8 +163,8 @@ class HybridSearchEngine:
                 embedding_model=embedding_model,
                 limit=limit,
             )
-        except VectorIndexError:
-            return []
+        except VectorIndexError as exc:
+            raise HybridSearchError(f"dense vector search failed: {exc}") from exc
 
     def _resolve_candidates(
         self,

@@ -18,6 +18,7 @@ from zsper.brain.api import (
 from zsper.brain.compose import (
     RenderedBrainProfile,
     brain_ports_for_profile,
+    local_postgres_dsn_for_profile,
     render_brain_profile,
 )
 from zsper.config.user import UserConfigError, profile_ref_or_default
@@ -89,10 +90,7 @@ def _host_status_env(profile: Profile) -> dict[str, str]:
         "POSTGRES_PASSWORD": "zsper-local-only",
         "POSTGRES_HOST": "127.0.0.1",
         "POSTGRES_PORT": str(ports.postgres),
-        "POSTGRES_DSN": (
-            "postgresql://zsper:zsper-local-only@"
-            f"127.0.0.1:{ports.postgres}/{profile.database_name}"
-        ),
+        "POSTGRES_DSN": local_postgres_dsn_for_profile(profile),
         "REDIS_URL": f"redis://127.0.0.1:{ports.redis}/0",
         "REDIS_KEY_PREFIX": f"zsper:{profile.name}:",
         "ZSPER_MODEL_BASE_URL": os.environ.get(

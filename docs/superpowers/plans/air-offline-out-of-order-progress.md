@@ -9,8 +9,9 @@ the full Brain/RAG/orchestrator milestones are complete.
 ## Goal
 
 Make an air profile useful while Gemma 4 12B is still downloading elsewhere:
-initialize an isolated offline profile, inspect it, run doctor checks, ingest
-local text files, search those local files, and reject networked ingest paths.
+initialize an isolated portable profile, inspect it, run doctor checks, ingest
+local files and repo docs, search those local sources, and reject networked
+ingest paths when the air profile is configured for disconnected use.
 
 ## Implemented Out Of Order
 
@@ -26,6 +27,9 @@ local text files, search those local files, and reject networked ingest paths.
   - writes document metadata into `brain/documents/`;
   - appends audit events to `brain/ledgers/documents.jsonl`;
   - performs exact local token search without network calls.
+- Phase 4 RAG now covers Docling-supported local documents, repo directory
+  ingestion, chunk records, citation anchors, BM25 indexing, local embeddings,
+  dense vector indexing, hybrid search, and `brain answer` citation objects.
 - `./setup.sh --air` out-of-order setup path:
   - creates a project `.venv` wrapper unless `--no-venv` is used;
   - creates or reuses the `air` profile;
@@ -38,10 +42,6 @@ local text files, search those local files, and reject networked ingest paths.
 
 ## Deferred Back To The DAG
 
-- Docling parsing for PDFs, Office files, and complex HTML.
-- Chunk records, citation anchors, BM25 indexes, embeddings, dense vectors, and
-  hybrid ranking.
-- `brain answer` with citation objects.
 - Notes/tasks/memory records and UI views.
 - Mocked local model endpoint startup and agent-run launch.
 - Full integration test at `tests/integration/offline/test_air_offline_flows.py`.
@@ -52,6 +52,8 @@ local text files, search those local files, and reject networked ingest paths.
 - `pytest tests/unit/profiles/test_air_profile.py -q`
 - `pytest tests/unit/security/test_network_policy.py -q`
 - `pytest tests/unit/brain/test_air_file_store.py -q`
+- `pytest tests/unit/brain/test_rag_cli.py -q`
+- `pytest tests/integration/rag/test_rag_acceptance.py -q`
 - `pytest tests/unit/test_cli_air_profile.py -q`
 - `pytest tests/unit/test_setup_air_script.py -q`
 - `pytest tests/unit/test_docs_links.py -q`

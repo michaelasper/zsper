@@ -44,6 +44,20 @@ def test_readme_links_to_ultimate_spec() -> None:
     assert "docs/zsper-local-ai-platform-ultimate-spec.md" in readme
 
 
+def test_readme_limitations_reflect_phase4_rag_commands() -> None:
+    readme = read_text(README)
+
+    for stale_claim in (
+        "Air ingest accepts UTF-8 local text only",
+        "Search is exact local token search",
+        "`brain answer` is still reserved",
+    ):
+        assert stale_claim not in readme
+
+    assert "Hybrid BM25 + dense retrieval" in readme
+    assert "`brain answer` returns citation objects" in readme
+
+
 def assert_contains_all(text: str, required_phrases: tuple[str, ...]) -> None:
     for phrase in required_phrases:
         assert phrase in text

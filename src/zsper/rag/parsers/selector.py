@@ -217,7 +217,12 @@ def select_parser(
 
 def _resolve_source_type(source: str | Path, source_type: str | None) -> str:
     if source_type is None:
-        return "url" if looks_like_url(source) else "file"
+        if looks_like_url(source):
+            return "url"
+        source_path = Path(source).expanduser()
+        if source_path.exists() and source_path.is_dir():
+            return "repo"
+        return "file"
     if source_type not in SUPPORTED_SOURCE_TYPES:
         allowed = ", ".join(sorted(SUPPORTED_SOURCE_TYPES))
         raise ParserSelectionError(

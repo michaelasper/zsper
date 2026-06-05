@@ -19,7 +19,7 @@ from zsper.rag.web_capture import WebCaptureResult, capture_webpage_asset
 FIXTURES_ROOT = Path(__file__).resolve().parents[2] / "fixtures"
 SAMPLE_MD = FIXTURES_ROOT / "documents" / "sample.md"
 SAMPLE_PDF = FIXTURES_ROOT / "documents" / "sample.pdf"
-REPO_README = FIXTURES_ROOT / "repo-docs" / "README.md"
+REPO_DOCS_ROOT = FIXTURES_ROOT / "repo-docs"
 WEB_URL = "https://example.com/zsper/rag-acceptance"
 
 
@@ -231,6 +231,12 @@ def _clear_rag_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ZSPER_VECTOR_SQLITE_PATH", raising=False)
 
 
+def _use_sqlite_rag_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("ZSPER_RAG_SQLITE_PATH", str(tmp_path / "rag.sqlite"))
+    monkeypatch.setenv("ZSPER_BM25_SQLITE_PATH", str(tmp_path / "bm25.sqlite"))
+    monkeypatch.setenv("ZSPER_VECTOR_SQLITE_PATH", str(tmp_path / "vectors.sqlite"))
+
+
 def _stored_document(
     profile: Profile,
     document_id: str,
@@ -287,11 +293,12 @@ def test_rag_acceptance_ingests_searches_and_answers_with_exact_citations(
         root=tmp_path / "work",
         registry_path=isolated_registry_path,
     )
+    _use_sqlite_rag_env(monkeypatch, tmp_path)
 
     markdown_result = rag_commands.ingest_source(profile, SAMPLE_MD)
     pdf_result = rag_commands.ingest_source(profile, SAMPLE_PDF)
     web_result = rag_commands.ingest_source(profile, WEB_URL)
-    repo_docs_result = rag_commands.ingest_source(profile, REPO_README)
+    repo_docs_result = rag_commands.ingest_source(profile, REPO_DOCS_ROOT)
 
     markdown_document = _assert_ingested_document(profile, markdown_result.document_id)
     pdf_document = _assert_ingested_document(profile, pdf_result.document_id)
@@ -300,7 +307,8 @@ def test_rag_acceptance_ingests_searches_and_answers_with_exact_citations(
     assert markdown_document.parser == "text"
     assert pdf_document.parser == "docling"
     assert web_document.parser == "web-capture"
-    assert repo_document.metadata["original_path"] == str(REPO_README.resolve())
+    assert repo_document.parser == "repo"
+    assert repo_document.metadata["original_path"] == str(REPO_DOCS_ROOT.resolve())
     assert patches.docling_converter.sources == [pdf_document.raw_asset_path]
     assert patches.web_capture_calls == [WEB_URL]
 
@@ -354,9 +362,10 @@ def test_air_offline_acceptance_is_file_only_and_blocks_hosted_dependencies(
         registry_path=isolated_registry_path,
     )
 
-    result = rag_commands.ingest_source(profile, REPO_README)
+    result = rag_commands.ingest_source(profile, REPO_DOCS_ROOT)
     document = _assert_ingested_document(profile, result.document_id)
-    assert document.metadata["original_path"] == str(REPO_README.resolve())
+    assert document.parser == "repo"
+    assert document.metadata["original_path"] == str(REPO_DOCS_ROOT.resolve())
 
     results = rag_commands.search_profile(profile, "offline file only retrieval")
     assert results

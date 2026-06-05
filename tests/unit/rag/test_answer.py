@@ -9,6 +9,7 @@ from typing import Any
 from fastapi.testclient import TestClient
 import pytest
 
+from zsper.config.model_endpoint import ModelEndpoint
 from zsper.profiles import Profile, initialize_profile
 from zsper.rag import CitationAnchor, Document, DocumentChunk, ProfileRagStore
 from zsper.rag.indexes import ProfileBm25Index, ProfileVectorIndex
@@ -393,6 +394,77 @@ def test_answer_question_fails_when_model_omits_citations_for_retrieved_context(
     )
 
     with pytest.raises(AnswerError, match="must cite at least one retrieved chunk"):
+        answer_question(
+            profile,
+            store,
+            "How should I recover the worker?",
+            [_search_result(profile, document, chunk)],
+            model_client=model_client,
+        )
+
+
+def test_answer_question_allows_shared_localhost_policy_hostnames(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    from zsper.rag.answer import answer_question
+
+    profile = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+    store, document, chunk, anchor = _store_with_answer_fixture(tmp_path, profile)
+    model_client = _FakeAnswerModelClient(
+        content=_model_json(citation_anchor_ids=[anchor.id])
+    )
+    endpoint = ModelEndpoint(
+        provider_id="zsper-code",
+        base_url="http://host.containers.internal:9127/v1",
+        model_id=profile.model_profile,
+        context_window=131072,
+        output_limit=4096,
+        tool_support=True,
+    )
+
+    answer = answer_question(
+        profile,
+        store,
+        "How should I recover the worker?",
+        [_search_result(profile, document, chunk)],
+        model_client=model_client,
+        endpoint=endpoint,
+    )
+
+    assert answer.model == profile.model_profile
+    assert model_client.calls[0]["url"] == (
+        "http://host.containers.internal:9127/v1/chat/completions"
+    )
+
+
+@pytest.mark.parametrize("raw_confidence", ["NaN", "Infinity", "-Infinity"])
+def test_answer_question_rejects_non_finite_answer_confidence(
+    raw_confidence: str,
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    from zsper.rag.answer import AnswerError, answer_question
+
+    profile = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+    store, document, chunk, anchor = _store_with_answer_fixture(tmp_path, profile)
+    model_client = _FakeAnswerModelClient(
+        content=(
+            '{"answer":"Restart the worker.",'
+            f'"answer_confidence":{raw_confidence},'
+            f'"citation_anchor_ids":["{anchor.id}"]}}'
+        )
+    )
+
+    with pytest.raises(AnswerError, match="answer_confidence must be finite"):
         answer_question(
             profile,
             store,

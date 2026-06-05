@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from zsper.brain.compose import local_postgres_dsn_for_profile
 from zsper.config.user import UserConfigError, profile_ref_or_default
 from zsper.profiles import Profile, ProfileError, resolve_profile
 from zsper.rag import (
@@ -44,6 +45,7 @@ from zsper.rag.parsers import (
     parse_text_document,
     select_parser,
 )
+from zsper.rag.repo import RepoCaptureError, capture_repo_asset, parse_repo_document
 from zsper.rag.web_capture import WebCaptureError, capture_webpage_asset
 from zsper.security.network_policy import LOCALHOST_NAMES
 
@@ -207,13 +209,13 @@ def search_components_for_profile(
 
 def components_for_profile(profile: Profile) -> RagCommandComponents:
     index_root = Path(profile.root) / "brain" / "indexes"
-    postgres_dsn = os.environ.get("POSTGRES_DSN")
+    postgres_dsn = _postgres_dsn_for_profile(profile)
     rag_sqlite_path = os.environ.get("ZSPER_RAG_SQLITE_PATH")
     vector_sqlite_path = os.environ.get("ZSPER_VECTOR_SQLITE_PATH")
     if postgres_dsn:
         _require_local_postgres_dsn(postgres_dsn)
 
-    if rag_sqlite_path or profile.storage_backend == "sqlite-local" or not postgres_dsn:
+    if rag_sqlite_path or profile.storage_backend == "sqlite-local":
         store = ProfileRagStore.sqlite(rag_sqlite_path or index_root / "rag.sqlite")
     else:
         store = ProfileRagStore.postgres_dsn(postgres_dsn)
@@ -225,7 +227,6 @@ def components_for_profile(profile: Profile) -> RagCommandComponents:
     if (
         vector_sqlite_path
         or profile.storage_backend == "sqlite-local"
-        or not postgres_dsn
     ):
         vector_index = ProfileVectorIndex.sqlite(
             vector_sqlite_path or index_root / "vectors.sqlite"
@@ -238,6 +239,12 @@ def components_for_profile(profile: Profile) -> RagCommandComponents:
         bm25_index=bm25_index,
         vector_index=vector_index,
     )
+
+
+def _postgres_dsn_for_profile(profile: Profile) -> str | None:
+    if profile.storage_backend == "sqlite-local":
+        return os.environ.get("POSTGRES_DSN")
+    return os.environ.get("POSTGRES_DSN") or local_postgres_dsn_for_profile(profile)
 
 
 def _require_local_postgres_dsn(dsn: str) -> None:
@@ -300,8 +307,8 @@ def _capture_document(
             user_triggered=True,
         )
     if route.source_type == "repo":
-        raise RagCommandError("repo ingestion is not implemented for brain ingest")
-    return capture_local_asset(profile, store, route.source)
+        return capture_repo_asset(profile, store, route.source)
+    return capture_local_asset(profile, store, route.source, parser=route.parser)
 
 
 def _parse_document(document) -> None:
@@ -315,6 +322,9 @@ def _parse_document(document) -> None:
         return
     if document.parser == "web-capture":
         _parse_web_capture_document(document)
+        return
+    if document.parser == "repo":
+        parse_repo_document(document)
         return
     raise RagCommandError(f"unsupported parser route for brain ingest: {document.parser}")
 
@@ -393,6 +403,7 @@ _COMMAND_ERRORS = (
     RagPolicyError,
     RagStoreError,
     RawAssetCaptureError,
+    RepoCaptureError,
     TextParserError,
     VectorIndexError,
     WebCaptureError,

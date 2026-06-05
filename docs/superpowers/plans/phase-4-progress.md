@@ -9,9 +9,9 @@ Milestone: M4 Documents, RAG, And Citations
 | Task | Title | Dependencies | Status | Verification | Review | Commit |
 | --- | --- | --- | --- | --- | --- | --- |
 | RAG-001 | RAG Store And Models | BRAIN-002, BRAIN-004, GATE-001 | Complete | `pytest tests/unit/rag/test_store.py tests/unit/test_phase4_progress_doc.py -q` -> 8 passed | PASS | `feat(rag): add document store` |
-| RAG-002 | Raw Asset Capture | RAG-001 | Complete | `pytest tests/unit/rag/test_assets.py -q` -> 3 passed | PASS | `feat(rag): add asset capture and policy gates` |
+| RAG-002 | Raw Asset Capture | RAG-001 | Complete | `pytest tests/unit/rag/test_assets.py -q` -> 7 passed | PASS | `feat(rag): add asset capture and policy gates` |
 | RAG-003 | RAG Policy Gate | SEC-002, RAG-001 | Complete | `pytest tests/unit/rag/test_policy.py -q` -> 10 passed | PASS | `feat(rag): add asset capture and policy gates` |
-| RAG-004 | Parser Selector And Text Parser | RAG-002, RAG-003 | Complete | `pytest tests/unit/rag/test_parser_selector.py -q` -> 26 passed | PASS | `feat(rag): add parser selection` |
+| RAG-004 | Parser Selector And Text Parser | RAG-002, RAG-003 | Complete | `pytest tests/unit/rag/test_parser_selector.py -q` -> 27 passed | PASS | `feat(rag): add parser selection` |
 | RAG-005 | Docling Parser Adapter | RAG-004 | Complete | `pytest tests/unit/rag/test_docling_parser.py -q` -> 4 passed | PASS | `feat(rag): add docling and web capture` |
 | RAG-006 | Local Web Capture And Research Bridge | RAG-003, RAG-004 | Complete | `pytest tests/unit/rag/test_web_capture.py -q` -> 17 passed | PASS | `feat(rag): add docling and web capture` |
 | RAG-007 | Deterministic Chunking | RAG-004, RAG-005, RAG-006 | Complete | `pytest tests/unit/rag/test_chunking.py -q` -> 4 passed | PASS | `feat(rag): add deterministic chunking` |
@@ -19,10 +19,10 @@ Milestone: M4 Documents, RAG, And Citations
 | RAG-009 | Local Embedding Worker | RAG-007, SEC-002 | Complete | `pytest tests/unit/rag/test_embeddings.py -q` -> 4 passed | PASS | `feat(rag): add citations embeddings and bm25` |
 | RAG-010 | BM25 Index | RAG-007 | Complete | `pytest tests/unit/rag/test_bm25.py -q` -> 3 passed | PASS | `feat(rag): add citations embeddings and bm25` |
 | RAG-011 | Dense Vector Index | RAG-009, BRAIN-002 | Complete | `pytest tests/unit/rag/test_vector_index.py tests/integration/rag/test_pgvector.py -q` -> 5 passed, 1 skipped | PASS | `feat(rag): add vector index and documents api` |
-| RAG-012 | Hybrid Search | RAG-010, RAG-011 | Complete | `pytest tests/unit/rag/test_hybrid_search.py -q` -> 6 passed | PASS | `feat(rag): add hybrid search` |
+| RAG-012 | Hybrid Search | RAG-010, RAG-011 | Complete | `pytest tests/unit/rag/test_hybrid_search.py -q` -> 7 passed | PASS | `feat(rag): add hybrid search` |
 | RAG-013 | Citation-Grounded Answer Flow | RAG-008, RAG-012, CODE-001 | Complete | `pytest tests/unit/rag/test_answer.py -q` -> 7 passed | PASS | `feat(rag): add citation-grounded answers` |
 | RAG-014 | Documents And Citations API | RAG-008, BRAIN-005 | Complete | `pytest tests/unit/brain/test_documents_citations_api.py -q` -> 4 passed | PASS | `feat(rag): add vector index and documents api` |
-| RAG-015 | Brain Ingest/Search/Answer CLI | RAG-012, RAG-013, RAG-014, FND-004 | Complete | `pytest tests/unit/brain/test_rag_cli.py -q` -> 7 passed | PASS | `feat(cli): add brain rag commands` |
+| RAG-015 | Brain Ingest/Search/Answer CLI | RAG-012, RAG-013, RAG-014, FND-004 | Complete | `pytest tests/unit/brain/test_rag_cli.py -q` -> 8 passed | PASS | `feat(cli): add brain rag commands` |
 | RAG-016 | Citation Inspection UI | BRAIN-008, RAG-013, RAG-014 | Complete | `npm --prefix apps/brain-web test` -> 9 passed | PASS | `feat(brain-web): add citation inspection` |
 | GATE-002 | RAG Acceptance Suite | RAG-015, RAG-016 | Complete | `pytest tests/integration/rag/test_rag_acceptance.py -q` -> 2 passed | PASS | `test(rag): add rag acceptance suite` |
 
@@ -108,7 +108,7 @@ Milestone: M4 Documents, RAG, And Citations
   too and aligned RAG/vector index defaults on profile-local SQLite paths. Local
   verification:
   `pytest tests/unit/rag/test_hybrid_search.py tests/unit/rag/test_bm25.py tests/unit/rag/test_vector_index.py tests/unit/rag/test_citations.py -q`
-  -> 18 passed.
+  -> 19 passed.
 - 2026-06-05: Implemented and reviewed `RAG-013`. Citation-grounded answers now
   search retrieved chunks, call the local OpenAI-compatible chat completions
   endpoint, and return structured citation objects with document, chunk,
@@ -133,11 +133,11 @@ Milestone: M4 Documents, RAG, And Citations
   citations, and answer citation buttons. Review found sidebar navigation could
   stay on placeholder shell views and chat answers had no inspector path; both
   were fixed. Local verification: `pytest tests/unit/brain/test_rag_cli.py -q`
-  -> 7 passed; `npm --prefix apps/brain-web test` -> 9 passed; standalone
+  -> 8 passed; `npm --prefix apps/brain-web test` -> 9 passed; standalone
   `npm --prefix apps/brain-web run build` -> passed.
 - 2026-06-05: Implemented and reviewed `GATE-002`. The acceptance suite covers
   Markdown, PDF via a mocked local Docling converter, mocked web capture, repo
-  docs as checked-in source documentation, raw and parsed artifacts, chunks,
+  docs through the repo directory route, raw and parsed artifacts, chunks,
   citation anchors, embedding metadata, BM25 exact search, dense semantic
   search, structured answer citations, and air/offline file-only plus hosted
   dependency rejection. Local verification:

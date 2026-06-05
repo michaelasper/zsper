@@ -158,9 +158,10 @@ for the allowed and disallowed dependency forms.
 
 | Limitation | Workaround | Planned direction |
 | --- | --- | --- |
-| Air ingest accepts UTF-8 local text only | Convert PDFs, Office files, and complex HTML before ingesting | Docling parsing in the RAG milestone |
-| Search is exact local token search | Use clear local file text and direct query terms | Hybrid BM25 + dense retrieval |
-| `brain answer` is still reserved | Use `brain search` for local recall | Citation-backed answers |
+| Air is local-first but not always fully offline | Keep URL ingest disabled when traveling or disconnected | Per-profile network policy stays explicit |
+| RAG ingest depends on local parser/runtime availability | Install optional local Docling and model services before rich ingest/answer flows | More setup checks in profile doctor |
+| Hybrid BM25 + dense retrieval needs local indexes per profile | Run `zsper brain ingest` again after profile/storage changes | Automatic index repair and rebuild commands |
+| `brain answer` returns citation objects and requires a local model endpoint | Point the profile model URL at a local OpenAI-compatible server | Richer citation inspection and reranking |
 | Model download and serving are outside this repo | Prepare models through `llm-server` or another local serving contract | Stable local model adapter contracts |
 
 ## Troubleshooting

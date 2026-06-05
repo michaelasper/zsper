@@ -20,3 +20,7 @@ def test_air_offline_out_of_order_tracking_doc_exists() -> None:
     assert "profile init/show/list/doctor" in text
     assert "local-file ingest/search" in text
     assert "deferred" in text.lower()
+    assert "Phase 4 RAG now covers Docling" in text
+    assert "Docling parsing for PDFs, Office files, and complex HTML." not in text
+    assert "Chunk records, citation anchors, BM25 indexes" not in text
+    assert "`brain answer` with citation objects." not in text

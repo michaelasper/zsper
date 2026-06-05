@@ -48,6 +48,7 @@ EXPLICIT_SETTING_KEY_NEEDLES = frozenset(
 )
 POLICY_DEFINITION_FILES = frozenset(
     {
+        Path("rag/policy.py"),
         Path("security/hosted_dependencies.py"),
         Path("security/network_policy.py"),
     }

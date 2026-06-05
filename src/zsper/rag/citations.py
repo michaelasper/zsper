@@ -10,6 +10,7 @@ from pathlib import Path
 from zsper.profiles import Profile
 from zsper.rag.chunking import ChunkingResult, ChunkLocationMetadata
 from zsper.rag.models import CitationAnchor, Document, DocumentChunk
+from zsper.rag.repo import REPO_PARSED_SCHEMA
 from zsper.rag.store import ProfileRagStore
 
 
@@ -282,9 +283,23 @@ def _load_source_text(profile: Profile, document: Document) -> str:
             f"parsed source is not utf-8 for document {document.id}"
         ) from exc
 
-    if document.parser != "docling":
-        return raw_text
-    return _docling_source_text(document, raw_text)
+    if document.parser == "docling":
+        return _structured_source_text(
+            document,
+            raw_text,
+            label="Docling",
+            schema_key="Docling",
+            expected_schema=None,
+        )
+    if document.parser == "repo":
+        return _structured_source_text(
+            document,
+            raw_text,
+            label="Repo",
+            schema_key="Repo",
+            expected_schema=REPO_PARSED_SCHEMA,
+        )
+    return raw_text
 
 
 def _validated_parsed_source_path(profile: Profile, document: Document) -> Path:
@@ -301,18 +316,27 @@ def _validated_parsed_source_path(profile: Profile, document: Document) -> Path:
     return resolved_path
 
 
-def _docling_source_text(document: Document, raw_text: str) -> str:
+def _structured_source_text(
+    document: Document,
+    raw_text: str,
+    *,
+    label: str,
+    schema_key: str,
+    expected_schema: str | None,
+) -> str:
     try:
         data = json.loads(raw_text)
     except json.JSONDecodeError as exc:
         raise CitationError(
-            f"Docling parsed source is invalid JSON for document {document.id}"
+            f"{schema_key} parsed source is invalid JSON for document {document.id}"
         ) from exc
     if not isinstance(data, dict):
-        raise CitationError("Docling parsed source must be a JSON object")
+        raise CitationError(f"{label} parsed source must be a JSON object")
+    if expected_schema is not None and data.get("schema") != expected_schema:
+        raise CitationError(f"{label} parsed source schema must be {expected_schema}")
     text = data.get("text")
     if not isinstance(text, str):
-        raise CitationError("Docling parsed source text must be a string")
+        raise CitationError(f"{label} parsed source text must be a string")
     return text
 
 

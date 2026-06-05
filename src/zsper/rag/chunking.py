@@ -10,6 +10,7 @@ from typing import Any, Final
 
 from zsper.profiles import Profile
 from zsper.rag.models import Document, DocumentChunk
+from zsper.rag.repo import REPO_PARSED_SCHEMA
 from zsper.rag.store import ProfileRagStore
 
 
@@ -204,6 +205,8 @@ def _load_parsed_representation(document: Document) -> _ParsedRepresentation:
 
     if document.parser == "docling":
         return _load_docling_representation(document, raw_bytes)
+    if document.parser == "repo":
+        return _load_repo_representation(document, raw_bytes)
     return _load_text_representation(document, raw_bytes)
 
 
@@ -253,7 +256,7 @@ def _load_docling_representation(
     if not isinstance(text, str):
         raise ChunkingError("Docling parsed representation text must be a string")
 
-    segments = _docling_segments(data.get("segments"), text)
+    segments = _structured_segments(data.get("segments"), text, label="Docling")
     return _ParsedRepresentation(
         text=text,
         parser="docling",
@@ -268,17 +271,63 @@ def _load_docling_representation(
     )
 
 
-def _docling_segments(raw_segments: Any, text: str) -> tuple[_ParsedSegment, ...]:
+def _load_repo_representation(
+    document: Document,
+    raw_bytes: bytes,
+) -> _ParsedRepresentation:
+    try:
+        data = json.loads(raw_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ChunkingError(
+            f"Repo parsed representation is invalid JSON for document {document.id}"
+        ) from exc
+    if not isinstance(data, dict):
+        raise ChunkingError("Repo parsed representation must be a JSON object")
+    if data.get("schema") != REPO_PARSED_SCHEMA:
+        raise ChunkingError(
+            "Repo parsed representation schema must be "
+            f"{REPO_PARSED_SCHEMA}"
+        )
+    parsed_document_id = data.get("document_id")
+    if parsed_document_id is not None and parsed_document_id != document.id:
+        raise ChunkingError(
+            "Repo parsed representation document_id must match the document"
+        )
+    text = data.get("text")
+    if not isinstance(text, str):
+        raise ChunkingError("Repo parsed representation text must be a string")
+
+    segments = _structured_segments(data.get("segments"), text, label="Repo")
+    return _ParsedRepresentation(
+        text=text,
+        parser="repo",
+        content_fingerprint=_content_fingerprint(
+            {
+                "parser": "repo",
+                "text": text,
+                "segments": [_segment_fingerprint(segment) for segment in segments],
+            }
+        ),
+        segments=segments,
+    )
+
+
+def _structured_segments(
+    raw_segments: Any,
+    text: str,
+    *,
+    label: str,
+) -> tuple[_ParsedSegment, ...]:
     if raw_segments is None:
         return ()
     if not isinstance(raw_segments, list):
-        raise ChunkingError("Docling parsed representation segments must be a list")
+        raise ChunkingError(f"{label} parsed representation segments must be a list")
 
     segments: list[_ParsedSegment] = []
     cursor = 0
     for raw_segment in raw_segments:
         if not isinstance(raw_segment, dict):
-            raise ChunkingError("Docling segment must be a JSON object")
+            raise ChunkingError(f"{label} segment must be a JSON object")
         segment_text = raw_segment.get("text")
         if not isinstance(segment_text, str) or not segment_text:
             continue
@@ -296,7 +345,7 @@ def _docling_segments(raw_segments: Any, text: str) -> tuple[_ParsedSegment, ...
         if metadata is None:
             metadata = {}
         if not isinstance(metadata, dict):
-            raise ChunkingError("Docling segment metadata must be a JSON object")
+            raise ChunkingError(f"{label} segment metadata must be a JSON object")
         segments.append(
             _ParsedSegment(
                 text=segment_text,
@@ -407,7 +456,7 @@ def _location_metadata(
     return ChunkLocationMetadata(
         chunk_id=chunk_id,
         parser=parsed.parser,
-        source_path_or_url=_source_path_or_url(document),
+        source_path_or_url=_source_path_or_url(document, first_segment),
         byte_start=byte_start,
         byte_end=byte_end,
         page=first_segment.page if first_segment is not None else None,
@@ -440,7 +489,15 @@ def _overlaps(span: _ChunkSpan, segment: _ParsedSegment) -> bool:
     return segment.char_start < span.char_end and segment.char_end > span.char_start
 
 
-def _source_path_or_url(document: Document) -> str:
+def _source_path_or_url(
+    document: Document,
+    location: ChunkSourceLocation | None,
+) -> str:
+    if location is not None:
+        for key in ("source_path_or_url", "original_url", "final_url", "original_path"):
+            value = location.metadata.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
     for key in ("original_url", "final_url", "original_path"):
         value = document.metadata.get(key)
         if isinstance(value, str) and value.strip():

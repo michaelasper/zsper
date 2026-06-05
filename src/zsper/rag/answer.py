@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import urllib.error
 import urllib.request
 from collections.abc import Mapping, Sequence
@@ -15,6 +16,7 @@ from zsper.profiles import Profile
 from zsper.rag.models import CitationAnchor, DocumentChunk
 from zsper.rag.search import HybridSearchResult
 from zsper.rag.store import ProfileRagStore, RagStoreError
+from zsper.security.network_policy import NetworkPolicyError, check_network_policy
 
 
 DEFAULT_ANSWER_TIMEOUT_SECONDS = 30.0
@@ -128,7 +130,7 @@ def answer_question(
 ) -> AnswerResult:
     normalized_question = _normalize_question(question)
     endpoint = endpoint or endpoints_for_profile(profile)[0]
-    _require_local_endpoint(endpoint)
+    _require_local_endpoint(profile, endpoint)
     results = tuple(retrieved_results)
     if not results:
         raise AnswerError("retrieved context is required for answering")
@@ -185,15 +187,18 @@ def _normalize_question(question: str) -> str:
     return question.strip()
 
 
-def _require_local_endpoint(endpoint: ModelEndpoint) -> None:
+def _require_local_endpoint(profile: Profile, endpoint: ModelEndpoint) -> None:
     parsed = urlparse(endpoint.base_url)
-    if parsed.scheme not in {"http", "https"} or parsed.hostname not in {
-        "localhost",
-        "127.0.0.1",
-        "::1",
-        "host.docker.internal",
-    }:
+    if parsed.scheme not in {"http", "https"} or parsed.hostname is None:
         raise AnswerError("model endpoint must be local")
+    try:
+        check_network_policy(
+            profile.network_policy,
+            endpoint.base_url,
+            action="localhost-service",
+        ).raise_for_status()
+    except NetworkPolicyError as exc:
+        raise AnswerError("model endpoint must be local") from exc
 
 
 def _answer_contexts_for_results(
@@ -371,6 +376,8 @@ def _confidence(value: object, *, field_name: str) -> float:
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         raise AnswerError(f"model answer {field_name} must be a number")
     confidence = float(value)
+    if not math.isfinite(confidence):
+        raise AnswerError(f"model answer {field_name} must be finite")
     if confidence < 0.0 or confidence > 1.0:
         raise AnswerError(f"model answer {field_name} must be between 0 and 1")
     return confidence

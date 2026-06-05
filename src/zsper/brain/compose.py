@@ -14,6 +14,8 @@ from zsper.profiles import Profile
 
 DEFAULT_MODEL_BASE_URL = "http://host.docker.internal:9127/v1"
 DEFAULT_HONCHO_IMAGE = "ghcr.io/plastic-labs/honcho:latest"
+POSTGRES_USER = "zsper"
+POSTGRES_PASSWORD = "zsper-local-only"
 TEMPLATE_ROOT = Path(__file__).resolve().parents[3] / "compose"
 
 
@@ -61,6 +63,16 @@ def brain_ports_for_profile(profile: Profile) -> BrainPorts:
         redis=base + 3,
         searxng=base + 4,
         honcho=base + 5,
+    )
+
+
+def local_postgres_dsn_for_profile(profile: Profile) -> str:
+    """Return the host-side DSN for the profile's local Postgres service."""
+
+    ports = brain_ports_for_profile(profile)
+    return (
+        f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@"
+        f"127.0.0.1:{ports.postgres}/{profile.database_name}"
     )
 
 
@@ -117,8 +129,8 @@ def _template_values(
         "REPO_ROOT": str(repo_root.resolve(strict=False)),
         "MODEL_BASE_URL": model_base_url,
         "POSTGRES_DB": profile.database_name,
-        "POSTGRES_USER": "zsper",
-        "POSTGRES_PASSWORD": "zsper-local-only",
+        "POSTGRES_USER": POSTGRES_USER,
+        "POSTGRES_PASSWORD": POSTGRES_PASSWORD,
         "POSTGRES_PORT": str(ports.postgres),
         "REDIS_PORT": str(ports.redis),
         "SEARXNG_PORT": str(ports.searxng),
