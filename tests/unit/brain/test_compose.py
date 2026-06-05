@@ -44,8 +44,15 @@ def test_brain_compose_renders_profile_local_files(
     assert f"ZSPER_PROFILE_ID={profile.name}" in env_text
     assert f"ZSPER_PROFILE_ROOT={root}" in env_text
     assert f"{root}/runtime/brain/postgres" in compose_text
-    assert "${ZSPER_REPO_ROOT}/services/brain-api" in compose_text
+    assert "context: ${ZSPER_REPO_ROOT}" in compose_text
+    assert "dockerfile: services/brain-api/Dockerfile" in compose_text
     assert "${ZSPER_REPO_ROOT}/apps/brain-web" in compose_text
+    assert "SEARXNG_URL=http://searxng:8080" in env_text
+    assert "HONCHO_URL=http://honcho:8080" in env_text
+    assert "BRAIN_API_URL=http://brain-api:8000" in env_text
+    assert "NEXT_PUBLIC_BRAIN_API_BASE_URL" not in env_text
+    assert (Path("services") / "brain-api" / "Dockerfile").is_file()
+    assert (Path("apps") / "brain-web" / "Dockerfile").is_file()
 
 
 def test_brain_compose_is_profile_specific_and_excludes_model_serving(

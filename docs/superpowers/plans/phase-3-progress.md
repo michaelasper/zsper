@@ -17,7 +17,7 @@ Milestone: M3 Brain Platform
 | BRAIN-007 | Brain CLI Up Down Status | BRAIN-001, BRAIN-006, FND-004 | Complete | `pytest tests/unit/brain/test_cli.py tests/unit/test_cli_help.py -q` -> 25 passed | PASS | `feat(brain): add cli and web shell` |
 | BRAIN-008 | Next.js Brain Web Shell Starter | BRAIN-006 | Complete | `npm --prefix apps/brain-web test` -> 4 passed; `npm --prefix apps/brain-web run build` -> passed | PASS | `feat(brain): add cli and web shell` |
 | BRAIN-009 | Brain Context Server Stub | BRAIN-005, ADAPT-001 | Complete | `pytest tests/unit/brain/test_context_server.py tests/unit/code/test_zed_adapter.py -q` -> 6 passed | PASS | `feat(brain): add context server command` |
-| GATE-001 | Brain Platform Integration Gate | BRAIN-007, BRAIN-008, BRAIN-009 | Pending | Pending | Pending | Pending |
+| GATE-001 | Brain Platform Integration Gate | BRAIN-007, BRAIN-008, BRAIN-009 | Complete | `pytest tests/integration/brain/test_brain_platform_gate.py -q` -> 1 passed | PASS | `test(brain): add platform integration gate` |
 
 ## Orchestration Notes
 
@@ -47,6 +47,14 @@ Milestone: M3 Brain Platform
   `pytest tests/unit/brain/test_context_server.py tests/unit/code/test_zed_adapter.py -q`
   -> 6 passed; `pytest tests/unit/brain -q` -> 35 passed, 1 FastAPI/Starlette
   TestClient deprecation warning.
+- 2026-06-05: Implemented and reviewed `GATE-001`. Reviewer rejected two
+  initial gate versions for container service URL and Brain web API wiring
+  issues. Final fix uses rendered Compose `.env` values for status checks,
+  keeps browser fetches same-origin, routes web `/api/*` calls to Brain API
+  server-side, and adds Dockerfiles for Brain API and web services. Local
+  verification: `pytest tests/unit/brain/test_compose.py tests/integration/brain/test_brain_platform_gate.py -q`
+  -> 3 passed; `npm --prefix apps/brain-web test` -> 5 passed; `npm --prefix
+  apps/brain-web run build` -> passed.
 - Later parallelization point: after `BRAIN-006`, `BRAIN-008` can proceed
   independently from `BRAIN-007` and `BRAIN-009` as long as file ownership stays
   separate.

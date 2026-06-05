@@ -32,7 +32,17 @@ DEFAULT_LOCAL_CORS_ORIGINS = (
     "http://127.0.0.1:7621",
 )
 LOCALHOST_NAMES = frozenset(
-    {"localhost", "127.0.0.1", "::1", "host.docker.internal", "host.containers.internal"}
+    {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        "host.docker.internal",
+        "host.containers.internal",
+        "searxng",
+        "honcho",
+        "brain-api",
+        "brain-web",
+    }
 )
 STATUS_VALUES = frozenset({"pass", "fail", "disabled", "unknown"})
 

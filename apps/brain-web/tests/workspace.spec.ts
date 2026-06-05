@@ -119,6 +119,13 @@ test("renders an operational workspace with persistent navigation and inspector"
 });
 
 test("loads settings and status from mocked Brain API responses", async ({ page }) => {
+  const requestedUrls: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/")) {
+      requestedUrls.push(request.url());
+    }
+  });
+
   await page.goto("/");
   await page.getByRole("button", { name: "Settings" }).click();
 
@@ -130,6 +137,22 @@ test("loads settings and status from mocked Brain API responses", async ({ page 
   );
   await expect(page.getByTestId("settings-services")).toContainText("database");
   await expect(page.getByTestId("settings-services")).toContainText("redis");
+  expect(requestedUrls).toEqual([
+    "http://127.0.0.1:3000/api/status",
+    "http://127.0.0.1:3000/api/settings"
+  ]);
+});
+
+test("declares same-origin API rewrites for Compose web traffic", async () => {
+  const config = await import("../next.config.mjs");
+  const rewrites = await config.default.rewrites?.();
+
+  expect(rewrites).toEqual([
+    {
+      source: "/api/:path*",
+      destination: `${process.env.NEXT_PUBLIC_BRAIN_API_BASE_URL ?? "http://brain-api:8000"}/api/:path*`
+    }
+  ]);
 });
 
 for (const viewport of [

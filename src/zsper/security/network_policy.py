@@ -16,7 +16,17 @@ HOSTED_ACTIONS = frozenset(
     }
 )
 LOCALHOST_NAMES = frozenset(
-    {"localhost", "127.0.0.1", "::1", "host.docker.internal", "host.containers.internal"}
+    {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        "host.docker.internal",
+        "host.containers.internal",
+        "searxng",
+        "honcho",
+        "brain-api",
+        "brain-web",
+    }
 )
 
 

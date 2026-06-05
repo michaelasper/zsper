@@ -63,7 +63,8 @@ services:
 
   brain-api:
     build:
-      context: ${ZSPER_REPO_ROOT}/services/brain-api
+      context: ${ZSPER_REPO_ROOT}
+      dockerfile: services/brain-api/Dockerfile
     container_name: zsper-{{ PROFILE_SLUG }}-brain-api
     restart: unless-stopped
     env_file:
