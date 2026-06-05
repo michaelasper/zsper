@@ -12,8 +12,8 @@ Milestone: M4 Documents, RAG, And Citations
 | RAG-002 | Raw Asset Capture | RAG-001 | Complete | `pytest tests/unit/rag/test_assets.py -q` -> 3 passed | PASS | `feat(rag): add asset capture and policy gates` |
 | RAG-003 | RAG Policy Gate | SEC-002, RAG-001 | Complete | `pytest tests/unit/rag/test_policy.py -q` -> 10 passed | PASS | `feat(rag): add asset capture and policy gates` |
 | RAG-004 | Parser Selector And Text Parser | RAG-002, RAG-003 | Complete | `pytest tests/unit/rag/test_parser_selector.py -q` -> 26 passed | PASS | `feat(rag): add parser selection` |
-| RAG-005 | Docling Parser Adapter | RAG-004 | Pending | Pending | Pending | Pending |
-| RAG-006 | Local Web Capture And Research Bridge | RAG-003, RAG-004 | Pending | Pending | Pending | Pending |
+| RAG-005 | Docling Parser Adapter | RAG-004 | Complete | `pytest tests/unit/rag/test_docling_parser.py -q` -> 4 passed | PASS | `feat(rag): add docling and web capture` |
+| RAG-006 | Local Web Capture And Research Bridge | RAG-003, RAG-004 | Complete | `pytest tests/unit/rag/test_web_capture.py -q` -> 17 passed | PASS | `feat(rag): add docling and web capture` |
 | RAG-007 | Deterministic Chunking | RAG-004, RAG-005, RAG-006 | Pending | Pending | Pending | Pending |
 | RAG-008 | Citation Anchor Generation | RAG-007 | Pending | Pending | Pending | Pending |
 | RAG-009 | Local Embedding Worker | RAG-007, SEC-002 | Pending | Pending | Pending | Pending |
@@ -56,6 +56,19 @@ Milestone: M4 Documents, RAG, And Citations
   and repo paths to future repo parsing. Local verification:
   `pytest tests/unit/rag/test_parser_selector.py tests/unit/rag/test_assets.py tests/unit/rag/test_policy.py -q`
   -> 39 passed.
+- 2026-06-05: Implemented and reviewed `RAG-005` and `RAG-006` in parallel after
+  `RAG-004`. `RAG-005` added a local, fakeable Docling parser adapter that
+  writes normalized parsed JSON under `brain/parsed`, preserves page, heading,
+  section, label, and level metadata, and returns parser failure records without
+  creating chunks or partial parsed files. Review found missing Docling
+  `section_header` handling; the implementer added a regression test and fix.
+  `RAG-006` added explicit, policy-gated web capture and selected research
+  record ingestion into raw URL assets without auto-parsing. Review found
+  secret-bearing source/final URL leakage risks through document ledgers; the
+  implementers added pre-write rejection for userinfo, sensitive query keys, and
+  sensitive fragment keys while preserving benign fragments. Local verification:
+  `pytest tests/unit/rag/test_docling_parser.py tests/unit/rag/test_web_capture.py -q`
+  -> 21 passed.
 - Parallelization point: after `RAG-007`, dispatch `RAG-008`, `RAG-009`, and
   `RAG-010` in parallel where write scopes remain disjoint.
 

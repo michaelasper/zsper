@@ -8,16 +8,26 @@ from zsper.rag.parsers.selector import (
     ParserSelectionError,
     select_parser,
 )
+from zsper.rag.parsers.docling import (
+    DoclingParserFailure,
+    ParsedDoclingDocument,
+    ParsedDoclingSegment,
+    parse_docling_document,
+)
 from zsper.rag.parsers.text import ParsedText, TextParserError, parse_text_document
 
 __all__ = [
     "DOCLING_EXTENSIONS",
     "SUPPORTED_INPUT_SUMMARY",
     "TEXT_EXTENSIONS",
+    "DoclingParserFailure",
+    "ParsedDoclingDocument",
+    "ParsedDoclingSegment",
     "ParsedText",
     "ParserRoute",
     "ParserSelectionError",
     "TextParserError",
+    "parse_docling_document",
     "parse_text_document",
     "select_parser",
 ]
