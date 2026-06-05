@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { CitationInspector } from "./(workspace)/components/citation-inspector";
 import {
+  type BrainChatReport,
   type BrainSettingsReport,
   type BrainStatusReport,
   fetchBrainSettings,
-  fetchBrainStatus
+  fetchBrainStatus,
+  requestBrainChat
 } from "./api-client";
 
-type ViewKey =
+export type WorkspaceShellViewKey =
   | "chat"
   | "research"
   | "documents"
@@ -19,8 +23,8 @@ type ViewKey =
   | "agent-runs"
   | "settings";
 
-type ViewDefinition = {
-  key: ViewKey;
+export type WorkspaceShellViewDefinition = {
+  key: WorkspaceShellViewKey;
   label: string;
   eyebrow: string;
   summary: string;
@@ -32,7 +36,13 @@ type ViewDefinition = {
   inspectorItems: string[];
 };
 
-const views: ViewDefinition[] = [
+type WorkspaceShellProps = {
+  initialViewKey?: WorkspaceShellViewKey;
+  renderInspector?: (view: WorkspaceShellViewDefinition) => ReactNode;
+  renderWorkSurface?: (view: WorkspaceShellViewDefinition) => ReactNode;
+};
+
+const views: WorkspaceShellViewDefinition[] = [
   {
     key: "chat",
     label: "Chat",
@@ -162,13 +172,29 @@ const views: ViewDefinition[] = [
   }
 ];
 
-const viewByKey = new Map<ViewKey, ViewDefinition>(views.map((view) => [view.key, view]));
+const viewByKey = new Map<WorkspaceShellViewKey, WorkspaceShellViewDefinition>(
+  views.map((view) => [view.key, view])
+);
+const routeByViewKey: Partial<Record<WorkspaceShellViewKey, string>> = {
+  citations: "/citations",
+  documents: "/documents"
+};
 
-export function WorkspaceShell() {
-  const [activeViewKey, setActiveViewKey] = useState<ViewKey>("chat");
+export function WorkspaceShell({
+  initialViewKey = "chat",
+  renderInspector,
+  renderWorkSurface
+}: WorkspaceShellProps = {}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [activeViewKey, setActiveViewKey] =
+    useState<WorkspaceShellViewKey>(initialViewKey);
   const [status, setStatus] = useState<BrainStatusReport | null>(null);
   const [settings, setSettings] = useState<BrainSettingsReport | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [selectedAnswerCitationId, setSelectedAnswerCitationId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     let mounted = true;
@@ -201,11 +227,27 @@ export function WorkspaceShell() {
   }, []);
 
   const activeView = viewByKey.get(activeViewKey) ?? views[0];
+  const customInspector =
+    activeView.key === "chat" && selectedAnswerCitationId ? (
+      <CitationInspector citationAnchorId={selectedAnswerCitationId} />
+    ) : (
+      renderInspector?.(activeView)
+    );
+  const customWorkSurface = renderWorkSurface?.(activeView);
   const failedCount = status?.failed_components.length ?? 0;
   const statusTone = status?.overall_status === "pass" ? "pass" : status ? "warn" : "unknown";
   const serviceRows = useMemo(() => {
     return Object.entries(status?.components ?? {});
   }, [status]);
+  function selectView(view: WorkspaceShellViewDefinition) {
+    const targetRoute = routeByViewKey[view.key];
+    if (targetRoute && pathname !== targetRoute) {
+      setActiveViewKey(view.key);
+      router.push(targetRoute);
+      return;
+    }
+    setActiveViewKey(view.key);
+  }
 
   return (
     <div className="workspace-shell" data-testid="workspace-shell">
@@ -229,7 +271,7 @@ export function WorkspaceShell() {
               aria-label={view.label}
               className="nav-item"
               key={view.key}
-              onClick={() => setActiveViewKey(view.key)}
+              onClick={() => selectView(view)}
               type="button"
             >
               <span className="nav-item-label">{view.label}</span>
@@ -252,46 +294,183 @@ export function WorkspaceShell() {
         </header>
         <p className="view-summary">{activeView.summary}</p>
         <section className="work-surface" data-testid="view-placeholder">
-          {activeView.mainKind === "thread" ? <ThreadView view={activeView} /> : null}
-          {activeView.mainKind === "list" ? <ListView view={activeView} /> : null}
-          {activeView.mainKind === "table" ? <TableView view={activeView} /> : null}
-          {activeView.mainKind === "settings" ? (
-            <SettingsView
+          {customWorkSurface ?? (
+            <DefaultWorkSurface
               apiError={apiError}
+              onSelectAnswerCitation={setSelectedAnswerCitationId}
               serviceRows={serviceRows}
               settings={settings}
               status={status}
+              view={activeView}
             />
-          ) : null}
+          )}
         </section>
       </main>
 
       <aside className="right-inspector" data-testid="right-inspector">
-        <div className="inspector-header">
-          <p>Inspector</p>
-          <h2 data-testid="inspector-heading">{activeView.inspectorTitle}</h2>
-        </div>
-        <div className="inspector-stack">
-          {activeView.inspectorItems.map((item) => (
-            <div className="inspector-row" key={item}>
-              <span>{item}</span>
-              <strong>pending</strong>
-            </div>
-          ))}
-        </div>
-        {activeView.key === "settings" ? (
-          <RuntimeInspector apiError={apiError} settings={settings} status={status} />
-        ) : (
-          <div className="inspector-note">
-            Select a record in this view to inspect metadata, citations, chunks, or run events.
-          </div>
+        {customInspector ?? (
+          <DefaultInspector
+            activeView={activeView}
+            apiError={apiError}
+            settings={settings}
+            status={status}
+          />
         )}
       </aside>
     </div>
   );
 }
 
-function ThreadView({ view }: { view: ViewDefinition }) {
+function DefaultWorkSurface({
+  apiError,
+  onSelectAnswerCitation,
+  serviceRows,
+  settings,
+  status,
+  view
+}: {
+  apiError: string | null;
+  onSelectAnswerCitation: (citationAnchorId: string) => void;
+  serviceRows: [string, string][];
+  settings: BrainSettingsReport | null;
+  status: BrainStatusReport | null;
+  view: WorkspaceShellViewDefinition;
+}) {
+  return (
+    <>
+      {view.key === "chat" ? (
+        <ChatView onSelectCitation={onSelectAnswerCitation} />
+      ) : null}
+      {view.mainKind === "thread" && view.key !== "chat" ? (
+        <ThreadView view={view} />
+      ) : null}
+      {view.mainKind === "list" ? <ListView view={view} /> : null}
+      {view.mainKind === "table" ? <TableView view={view} /> : null}
+      {view.mainKind === "settings" ? (
+        <SettingsView
+          apiError={apiError}
+          serviceRows={serviceRows}
+          settings={settings}
+          status={status}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function ChatView({
+  onSelectCitation
+}: {
+  onSelectCitation: (citationAnchorId: string) => void;
+}) {
+  const [question, setQuestion] = useState("");
+  const [chat, setChat] = useState<BrainChatReport | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function submitQuestion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedQuestion = question.trim();
+    if (!normalizedQuestion || loading) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      setChat(await requestBrainChat(normalizedQuestion));
+    } catch (requestError) {
+      setChat(null);
+      setError(
+        requestError instanceof Error ? requestError.message : "Brain chat failed"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="chat-rag-surface">
+      <form className="chat-rag-form" onSubmit={submitQuestion}>
+        <label htmlFor="chat-question">Chat question</label>
+        <input
+          aria-label="Chat question"
+          id="chat-question"
+          onChange={(event) => setQuestion(event.target.value)}
+          type="search"
+          value={question}
+        />
+        <button disabled={loading} type="submit">
+          Ask
+        </button>
+      </form>
+      {error ? <div className="api-error">{error}</div> : null}
+      {chat ? (
+        <article className="chat-answer" data-testid="chat-answer">
+          <div className="thread-message">
+            <span>{chat.answer.model}</span>
+            <p>{chat.answer.text}</p>
+          </div>
+          <div className="answer-citation-list">
+            {chat.answer.citations.map((citation) => (
+              <button
+                className="citation-row-button answer-citation-button"
+                key={citation.citation_anchor_id}
+                onClick={() => onSelectCitation(citation.citation_anchor_id)}
+                type="button"
+              >
+                <span>{citation.citation_anchor_id}</span>
+                <strong>
+                  {citation.source_path_or_url}
+                  {citation.display_range ? ` · ${citation.display_range}` : ""}
+                </strong>
+              </button>
+            ))}
+          </div>
+        </article>
+      ) : (
+        <div className="empty-strip">No active chat session.</div>
+      )}
+    </div>
+  );
+}
+
+function DefaultInspector({
+  activeView,
+  apiError,
+  settings,
+  status
+}: {
+  activeView: WorkspaceShellViewDefinition;
+  apiError: string | null;
+  settings: BrainSettingsReport | null;
+  status: BrainStatusReport | null;
+}) {
+  return (
+    <>
+      <div className="inspector-header">
+        <p>Inspector</p>
+        <h2 data-testid="inspector-heading">{activeView.inspectorTitle}</h2>
+      </div>
+      <div className="inspector-stack">
+        {activeView.inspectorItems.map((item) => (
+          <div className="inspector-row" key={item}>
+            <span>{item}</span>
+            <strong>pending</strong>
+          </div>
+        ))}
+      </div>
+      {activeView.key === "settings" ? (
+        <RuntimeInspector apiError={apiError} settings={settings} status={status} />
+      ) : (
+        <div className="inspector-note">
+          Select a record in this view to inspect metadata, citations, chunks, or run events.
+        </div>
+      )}
+    </>
+  );
+}
+
+function ThreadView({ view }: { view: WorkspaceShellViewDefinition }) {
   return (
     <div className="thread-stack">
       {view.rows.map(([speaker, body]) => (
@@ -305,7 +484,7 @@ function ThreadView({ view }: { view: ViewDefinition }) {
   );
 }
 
-function ListView({ view }: { view: ViewDefinition }) {
+function ListView({ view }: { view: WorkspaceShellViewDefinition }) {
   return (
     <div className="record-list">
       {view.rows.map(([label, body]) => (
@@ -319,7 +498,7 @@ function ListView({ view }: { view: ViewDefinition }) {
   );
 }
 
-function TableView({ view }: { view: ViewDefinition }) {
+function TableView({ view }: { view: WorkspaceShellViewDefinition }) {
   return (
     <div className="table-shell">
       <table>

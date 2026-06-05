@@ -243,6 +243,74 @@ select {
   padding: 12px;
 }
 
+.chat-rag-surface {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.chat-rag-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.chat-rag-form label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.chat-rag-form input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 9px 10px;
+}
+
+.chat-rag-form button {
+  cursor: pointer;
+  border: 1px solid #a8b28f;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #f8faf0;
+  padding: 9px 12px;
+  font-weight: 800;
+}
+
+.chat-rag-form button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.chat-answer {
+  display: grid;
+  gap: 8px;
+}
+
+.answer-citation-list {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.answer-citation-button {
+  border-bottom: 1px solid var(--line);
+  padding: 7px 0;
+}
+
+.answer-citation-button:last-child {
+  border-bottom: 0;
+}
+
 .thread-message,
 .record-row {
   border: 1px solid var(--line);
@@ -281,6 +349,12 @@ select {
   padding: 12px;
 }
 
+.citation-table-shell {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 10px;
+}
+
 table {
   width: 100%;
   min-width: 600px;
@@ -312,6 +386,59 @@ td {
 
 tbody tr:last-child td {
   border-bottom: 0;
+}
+
+tbody tr[data-selected="true"] td {
+  background: #f0f6ef;
+}
+
+.citation-table {
+  min-width: 760px;
+}
+
+.document-table {
+  min-width: 820px;
+}
+
+.document-inspection-layout,
+.document-chunk-list {
+  display: grid;
+  gap: 10px;
+}
+
+.record-metadata-grid {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 10px;
+}
+
+.citation-row-button {
+  display: grid;
+  width: 100%;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0;
+  text-align: left;
+}
+
+.citation-row-button span {
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.citation-row-button strong {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .table-shell .empty-strip {
@@ -429,6 +556,45 @@ dd {
   line-height: 1.4;
 }
 
+.citation-inspector-body {
+  display: grid;
+  gap: 12px;
+}
+
+.citation-text-block {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px;
+}
+
+.citation-text-block h3 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.citation-text-block pre {
+  max-height: 220px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 @media (max-width: 960px) {
   .workspace-shell {
     grid-template-columns: minmax(128px, 152px) minmax(0, 1fr);
@@ -525,7 +691,8 @@ dd {
   .thread-stack,
   .record-list,
   .settings-grid,
-  .table-shell {
+  .table-shell,
+  .citation-table-shell {
     padding: 8px;
   }
 

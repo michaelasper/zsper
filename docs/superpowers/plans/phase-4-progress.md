@@ -22,8 +22,8 @@ Milestone: M4 Documents, RAG, And Citations
 | RAG-012 | Hybrid Search | RAG-010, RAG-011 | Complete | `pytest tests/unit/rag/test_hybrid_search.py -q` -> 6 passed | PASS | `feat(rag): add hybrid search` |
 | RAG-013 | Citation-Grounded Answer Flow | RAG-008, RAG-012, CODE-001 | Complete | `pytest tests/unit/rag/test_answer.py -q` -> 7 passed | PASS | `feat(rag): add citation-grounded answers` |
 | RAG-014 | Documents And Citations API | RAG-008, BRAIN-005 | Complete | `pytest tests/unit/brain/test_documents_citations_api.py -q` -> 4 passed | PASS | `feat(rag): add vector index and documents api` |
-| RAG-015 | Brain Ingest/Search/Answer CLI | RAG-012, RAG-013, RAG-014, FND-004 | Pending | Pending | Pending | Pending |
-| RAG-016 | Citation Inspection UI | BRAIN-008, RAG-013, RAG-014 | Pending | Pending | Pending | Pending |
+| RAG-015 | Brain Ingest/Search/Answer CLI | RAG-012, RAG-013, RAG-014, FND-004 | Complete | `pytest tests/unit/brain/test_rag_cli.py -q` -> 7 passed | PASS | `feat(cli): add brain rag commands` |
+| RAG-016 | Citation Inspection UI | BRAIN-008, RAG-013, RAG-014 | Complete | `npm --prefix apps/brain-web test` -> 9 passed | PASS | `feat(brain-web): add citation inspection` |
 | GATE-002 | RAG Acceptance Suite | RAG-015, RAG-016 | Pending | Pending | Pending | Pending |
 
 ## Orchestration Notes
@@ -119,6 +119,22 @@ Milestone: M4 Documents, RAG, And Citations
   to the model while keeping public citations compact. Local verification:
   `pytest tests/unit/test_cli_help.py tests/unit/rag/test_answer.py -q`
   -> 25 passed.
+- 2026-06-05: Implemented and reviewed `RAG-015` and `RAG-016` in parallel
+  after `RAG-013` unlocked both tasks. `RAG-015` moves brain RAG CLI handlers
+  into `src/zsper/brain/rag_commands.py` and runs ingest through policy, local
+  asset capture or allowed web capture, parsing, deterministic chunking,
+  citation anchor creation, local embeddings, BM25 indexing, and vector
+  indexing before search/answer use hybrid retrieval and structured citations.
+  Review found remote Postgres DSNs and libpq `host`/`hostaddr` query params
+  could bypass local-only storage policy, and implemented command help still
+  read as placeholders; both were fixed with regression tests. `RAG-016` adds
+  `/documents` and `/citations` Brain web routes plus a shared citation
+  inspector that can open source context from citation rows, document chunk
+  citations, and answer citation buttons. Review found sidebar navigation could
+  stay on placeholder shell views and chat answers had no inspector path; both
+  were fixed. Local verification: `pytest tests/unit/brain/test_rag_cli.py -q`
+  -> 7 passed; `npm --prefix apps/brain-web test` -> 9 passed; standalone
+  `npm --prefix apps/brain-web run build` -> passed.
 
 ## Acceptance Gates
 
