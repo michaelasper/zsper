@@ -19,7 +19,7 @@ Milestone: M4 Documents, RAG, And Citations
 | RAG-009 | Local Embedding Worker | RAG-007, SEC-002 | Complete | `pytest tests/unit/rag/test_embeddings.py -q` -> 4 passed | PASS | `feat(rag): add citations embeddings and bm25` |
 | RAG-010 | BM25 Index | RAG-007 | Complete | `pytest tests/unit/rag/test_bm25.py -q` -> 3 passed | PASS | `feat(rag): add citations embeddings and bm25` |
 | RAG-011 | Dense Vector Index | RAG-009, BRAIN-002 | Complete | `pytest tests/unit/rag/test_vector_index.py tests/integration/rag/test_pgvector.py -q` -> 5 passed, 1 skipped | PASS | `feat(rag): add vector index and documents api` |
-| RAG-012 | Hybrid Search | RAG-010, RAG-011 | Pending | Pending | Pending | Pending |
+| RAG-012 | Hybrid Search | RAG-010, RAG-011 | Complete | `pytest tests/unit/rag/test_hybrid_search.py -q` -> 6 passed | PASS | `feat(rag): add hybrid search` |
 | RAG-013 | Citation-Grounded Answer Flow | RAG-008, RAG-012, CODE-001 | Pending | Pending | Pending | Pending |
 | RAG-014 | Documents And Citations API | RAG-008, BRAIN-005 | Complete | `pytest tests/unit/brain/test_documents_citations_api.py -q` -> 4 passed | PASS | `feat(rag): add vector index and documents api` |
 | RAG-015 | Brain Ingest/Search/Answer CLI | RAG-012, RAG-013, RAG-014, FND-004 | Pending | Pending | Pending | Pending |
@@ -99,6 +99,16 @@ Milestone: M4 Documents, RAG, And Citations
   verification:
   `pytest tests/unit/rag/test_vector_index.py tests/integration/rag/test_pgvector.py tests/unit/brain/test_documents_citations_api.py -q`
   -> 9 passed, 1 skipped.
+- 2026-06-05: Implemented and reviewed `RAG-012`. Hybrid search now combines
+  BM25 and dense vector candidates, returns chunk/citation/source ids with score
+  components and previews, exposes `/api/search`, and routes `zsper brain search`
+  through hybrid search for all resolved profiles. Review found that air CLI
+  search still used exact-only offline search and sqlite-local API dependencies
+  could pick Postgres; the implementer made hybrid search the default for air
+  too and aligned RAG/vector index defaults on profile-local SQLite paths. Local
+  verification:
+  `pytest tests/unit/rag/test_hybrid_search.py tests/unit/rag/test_bm25.py tests/unit/rag/test_vector_index.py tests/unit/rag/test_citations.py -q`
+  -> 18 passed.
 
 ## Acceptance Gates
 

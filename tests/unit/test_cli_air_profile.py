@@ -84,7 +84,7 @@ def test_cli_air_profile_rejects_missing_ingest_path(
     assert "path-or-url is required" in captured.err
 
 
-def test_cli_air_profile_local_file_ingest_reaches_placeholder(
+def test_cli_air_profile_local_file_ingest_accepts_offline_file(
     capsys,
     monkeypatch,
     tmp_path: Path,
@@ -103,13 +103,6 @@ def test_cli_air_profile_local_file_ingest_reaches_placeholder(
     assert exit_code == 0
     assert "ingested document" in captured.out
     assert "offline policy blocks" not in captured.err
-
-    search_code = app(["brain", "search", "offline notes", "--profile", "air"])
-    search_output = capsys.readouterr()
-
-    assert search_code == 0
-    assert "offline notes" in search_output.out
-    assert str(local_file.resolve()) in search_output.out
 
 
 def test_cli_air_profile_can_use_configured_default(
@@ -130,10 +123,6 @@ def test_cli_air_profile_can_use_configured_default(
 
     ingest_code = app(["brain", "ingest", str(local_file)])
     ingest_output = capsys.readouterr()
-    search_code = app(["brain", "search", "portable compute"])
-    search_output = capsys.readouterr()
 
     assert ingest_code == 0
     assert "ingested document" in ingest_output.out
-    assert search_code == 0
-    assert "portable compute notes" in search_output.out

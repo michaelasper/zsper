@@ -24,6 +24,13 @@ from zsper.rag.models import (
     RagModelError,
 )
 from zsper.rag.policy import HOSTED_RAG_ACTIONS, RagPolicyError, RagPolicyGate
+from zsper.rag.search import (
+    DEFAULT_SEARCH_LIMIT,
+    HybridSearchEngine,
+    HybridSearchError,
+    HybridSearchResult,
+    hybrid_search,
+)
 from zsper.rag.store import (
     POSTGRES_RAG_SCHEMA_SQL,
     SQLITE_RAG_SCHEMA_SQL,
@@ -49,6 +56,10 @@ __all__ = [
     "Document",
     "DocumentChunk",
     "EmbeddingMetadata",
+    "DEFAULT_SEARCH_LIMIT",
+    "HybridSearchEngine",
+    "HybridSearchError",
+    "HybridSearchResult",
     "ProfileRagStore",
     "RagModelError",
     "RagPolicyError",
@@ -56,6 +67,7 @@ __all__ = [
     "RagStoreError",
     "chunk_document",
     "generate_citation_anchors",
+    "hybrid_search",
     "inspect_citation_source",
     "replay_document_metadata",
 ]

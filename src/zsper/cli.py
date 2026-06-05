@@ -210,8 +210,8 @@ def _brain_ingest(namespace: argparse.Namespace) -> int:
 
 def _brain_search(namespace: argparse.Namespace) -> int:
     from zsper.config.user import UserConfigError
-    from zsper.brain.offline_store import BrainOfflineError, search_local_files
     from zsper.profiles import ProfileError, resolve_profile
+    from zsper.rag import HybridSearchError
 
     try:
         profile = resolve_profile(_profile_ref_for_command(namespace.profile))
@@ -221,21 +221,68 @@ def _brain_search(namespace: argparse.Namespace) -> int:
     except ProfileError:
         return _placeholder(namespace)
 
-    if profile.mode != "air-offline":
-        return _placeholder(namespace)
+    query = " ".join(namespace.query).strip()
+    if not query:
+        print("query is required for brain search", file=sys.stderr)
+        return 2
 
-    query = " ".join(namespace.query)
     try:
-        results = search_local_files(profile, query)
-    except BrainOfflineError as exc:
+        results = _hybrid_search_profile(profile, query)
+    except HybridSearchError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
     for result in results:
+        components = (
+            f"bm25={result.score_components['bm25']:.6g},"
+            f"dense={result.score_components['dense']:.6g}"
+        )
         print(
-            f"{result.score}\t{result.document_id}\t{result.source_path}\t{result.snippet}"
+            f"{result.score:.6g}\t{result.document_id}\t{result.chunk_id}\t"
+            f"{result.citation_anchor_id}\t{result.source_path_or_url}\t"
+            f"{components}\t{result.text_preview}"
         )
     return 0
+
+
+def _hybrid_search_profile(profile, query: str):
+    import os
+    from pathlib import Path
+
+    from zsper.rag import HybridSearchEngine, ProfileRagStore
+    from zsper.rag.embeddings import provider_for_profile
+    from zsper.rag.indexes import ProfileBm25Index, ProfileVectorIndex
+
+    index_root = Path(profile.root) / "brain" / "indexes"
+    rag_sqlite_path = os.environ.get("ZSPER_RAG_SQLITE_PATH")
+    postgres_dsn = os.environ.get("POSTGRES_DSN")
+    if rag_sqlite_path or profile.storage_backend == "sqlite-local" or not postgres_dsn:
+        store = ProfileRagStore.sqlite(rag_sqlite_path or index_root / "rag.sqlite")
+    else:
+        store = ProfileRagStore.postgres_dsn(postgres_dsn)
+
+    bm25_index = ProfileBm25Index.sqlite(
+        os.environ.get("ZSPER_BM25_SQLITE_PATH") or index_root / "bm25.sqlite"
+    )
+    vector_sqlite_path = os.environ.get("ZSPER_VECTOR_SQLITE_PATH")
+    if (
+        vector_sqlite_path
+        or profile.storage_backend == "sqlite-local"
+        or not postgres_dsn
+    ):
+        vector_index = ProfileVectorIndex.sqlite(
+            vector_sqlite_path or index_root / "vectors.sqlite"
+        )
+    else:
+        vector_index = ProfileVectorIndex.postgres_dsn(postgres_dsn)
+
+    engine = HybridSearchEngine(
+        store=store,
+        bm25_index=bm25_index,
+        vector_index=vector_index,
+        query_embedding_provider=provider_for_profile(profile),
+    )
+    return engine.search(profile, query)
 
 
 def _configure_reserved_signature(

@@ -206,6 +206,10 @@ else
   run_zsper brain ingest --profile "$profile_ref" "$note_path" >/dev/null
 fi
 
+"$python_bin" -m zsper.rag.setup_index \
+  --profile-json "$profile_json" \
+  --source "$note_path" >/dev/null
+
 if ! run_zsper brain search --profile "$profile_ref" offline | grep -F "air-readiness.md" >/dev/null; then
   echo "Offline search smoke check failed." >&2
   exit 1
