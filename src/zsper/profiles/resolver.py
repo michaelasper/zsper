@@ -26,7 +26,11 @@ def load_profile(root_or_profile_json: Path | str) -> Profile:
     profile_path = candidate if candidate.name == "profile.json" else candidate / "profile.json"
     if not profile_path.is_file():
         raise ProfileError(f"profile.json not found at {profile_path}")
-    return Profile.from_dict(json.loads(profile_path.read_text(encoding="utf-8")))
+    try:
+        payload = json.loads(profile_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ProfileError(f"invalid profile JSON at {profile_path}: {exc.msg}") from exc
+    return Profile.from_dict(payload)
 
 
 def _registry_matches(

@@ -27,12 +27,28 @@ def test_guard_flags_forbidden_core_runtime_dependency(tmp_path: Path) -> None:
         scan_for_forbidden_hosted_dependencies(src, raise_on_findings=True)
 
 
-def test_guard_ignores_docs_and_future_plugin_metadata(tmp_path: Path) -> None:
+def test_guard_allows_declared_disabled_by_default_plugin_metadata(
+    tmp_path: Path,
+) -> None:
     root = tmp_path / "repo"
-    (root / "src" / "zsper" / "plugins").mkdir(parents=True)
+    plugin = root / "src" / "zsper" / "plugins" / "notion"
+    plugin.mkdir(parents=True)
     (root / "docs").mkdir()
-    (root / "src" / "zsper" / "plugins" / "notion.toml").write_text(
-        'name = "Notion"\nnetwork = "disabled-by-default"\n',
+    (plugin / "plugin.toml").write_text(
+        "\n".join(
+            [
+                'name = "Notion"',
+                'network_behavior = "disabled-by-default"',
+                'secret_requirements = "declared"',
+                'profile_scope = "profile-local"',
+                "disabled_by_default = true",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (plugin / "adapter.py").write_text(
+        'SERVICE = "Notion"\n',
         encoding="utf-8",
     )
     (root / "docs" / "policy.md").write_text(
@@ -41,6 +57,23 @@ def test_guard_ignores_docs_and_future_plugin_metadata(tmp_path: Path) -> None:
     )
 
     assert scan_for_forbidden_hosted_dependencies(root) == []
+
+
+def test_guard_flags_plugin_references_without_required_metadata(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "repo"
+    plugin = root / "src" / "zsper" / "plugins" / "notion"
+    plugin.mkdir(parents=True)
+    adapter = plugin / "adapter.py"
+    adapter.write_text('SERVICE = "Notion"\n', encoding="utf-8")
+
+    findings = scan_for_forbidden_hosted_dependencies(root)
+
+    assert findings
+    assert findings[0].path == adapter
+    assert findings[0].dependency == "Notion"
+    assert "plugin metadata" in findings[0].text
 
 
 def test_current_zsper_source_has_no_forbidden_core_hosted_dependencies() -> None:

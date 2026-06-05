@@ -53,6 +53,48 @@ def test_invalid_enum_values_fail_validation(
         Profile.from_dict(profile_payload(tmp_path / "profile", **{field: value}))
 
 
+def test_profile_from_dict_reports_missing_required_field(tmp_path: Path) -> None:
+    payload = profile_payload(tmp_path / "profile")
+    del payload["model_profile"]
+
+    with pytest.raises(ProfileError, match="missing required profile field: model_profile"):
+        Profile.from_dict(payload)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "name",
+        "model_profile",
+        "embedding_profile",
+        "database_name",
+        "created_at",
+        "updated_at",
+    ],
+)
+def test_profile_rejects_empty_required_strings(tmp_path: Path, field: str) -> None:
+    with pytest.raises(ProfileError, match=f"profile {field} must be a non-empty string"):
+        Profile.from_dict(profile_payload(tmp_path / "profile", **{field: ""}))
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("schema_version", "1", "profile schema_version must be an integer"),
+        ("name", 123, "profile name must be a non-empty string"),
+        ("long_context_fallback", 123, "profile long_context_fallback must be a string or null"),
+    ],
+)
+def test_profile_rejects_wrong_field_types(
+    tmp_path: Path,
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    with pytest.raises(ProfileError, match=message):
+        Profile.from_dict(profile_payload(tmp_path / "profile", **{field: value}))
+
+
 def test_validate_profile_rejects_relative_root() -> None:
     profile = Profile(
         schema_version=1,

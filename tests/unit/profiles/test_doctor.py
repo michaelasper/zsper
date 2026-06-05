@@ -1,8 +1,11 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from zsper.profiles.doctor import profile_doctor
 from zsper.profiles.init import initialize_profile
+from zsper.profiles.schema import ProfileError
 
 
 def test_doctor_passes_for_healthy_profiles(
@@ -117,3 +120,41 @@ def test_doctor_preserves_resolver_errors_when_raw_profile_can_be_loaded(
 
     assert report.ok is False
     assert any("registry entry root mismatch" in error for error in report.errors)
+
+
+def test_doctor_reports_profile_json_missing_required_fields(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    profile = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+    profile_path = Path(profile.root) / "profile.json"
+    payload = json.loads(profile_path.read_text(encoding="utf-8"))
+    del payload["model_profile"]
+    profile_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    report = profile_doctor(profile.root, registry_path=isolated_registry_path)
+
+    assert report.ok is False
+    assert any(
+        "missing required profile field: model_profile" in error
+        for error in report.errors
+    )
+
+
+def test_doctor_reports_invalid_profile_json_as_profile_error(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    profile = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+    (Path(profile.root) / "profile.json").write_text("{not-json", encoding="utf-8")
+
+    with pytest.raises(ProfileError, match="invalid profile JSON"):
+        profile_doctor(profile.root, registry_path=isolated_registry_path)

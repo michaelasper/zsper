@@ -4,7 +4,12 @@ from zsper.profiles.defaults import MODE_DEFAULTS, default_profile
 from zsper.profiles.doctor import DoctorReport, profile_doctor
 from zsper.profiles.init import PROFILE_LAYOUT_DIRS, initialize_profile
 from zsper.profiles.registry import list_profiles, registry_path_from_env
-from zsper.profiles.resolver import ResolvedProfile, load_profile, resolve_profile
+from zsper.profiles.resolver import (
+    ResolvedProfile,
+    load_profile,
+    resolve_profile,
+    resolve_profile_context,
+)
 from zsper.profiles.schema import (
     NETWORK_POLICIES,
     PROFILE_MODES,
@@ -35,5 +40,6 @@ __all__ = [
     "profile_doctor",
     "registry_path_from_env",
     "resolve_profile",
+    "resolve_profile_context",
     "validate_profile",
 ]

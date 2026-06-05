@@ -64,6 +64,8 @@ def isolated_test_home(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureR
     original_os_open = os.open
     original_os_mkdir = os.mkdir
     original_os_makedirs = os.makedirs
+    original_os_rename = os.rename
+    original_os_replace = os.replace
     original_shutil_copy = shutil.copy
     original_shutil_copy2 = shutil.copy2
     original_shutil_copyfile = shutil.copyfile
@@ -74,6 +76,8 @@ def isolated_test_home(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureR
     original_touch = Path.touch
     original_mkdir = Path.mkdir
     original_open = Path.open
+    original_path_rename = Path.rename
+    original_path_replace = Path.replace
 
     def guarded_write_text(self: Path, *args: Any, **kwargs: Any) -> int:
         assert_not_real_home_write(self, allow_real_home=allow_real_home)
@@ -114,6 +118,14 @@ def isolated_test_home(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureR
         assert_not_real_home_write(name, allow_real_home=allow_real_home)
         return original_os_makedirs(name, *args, **kwargs)
 
+    def guarded_os_rename(src: Any, dst: Any, *args: Any, **kwargs: Any) -> None:
+        assert_not_real_home_write(dst, allow_real_home=allow_real_home)
+        return original_os_rename(src, dst, *args, **kwargs)
+
+    def guarded_os_replace(src: Any, dst: Any, *args: Any, **kwargs: Any) -> None:
+        assert_not_real_home_write(dst, allow_real_home=allow_real_home)
+        return original_os_replace(src, dst, *args, **kwargs)
+
     def guarded_shutil_copy(src: Any, dst: Any, *args: Any, **kwargs: Any) -> str:
         assert_not_real_home_write(dst, allow_real_home=allow_real_home)
         return original_shutil_copy(src, dst, *args, **kwargs)
@@ -134,11 +146,21 @@ def isolated_test_home(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureR
         assert_not_real_home_write(dst, allow_real_home=allow_real_home)
         return original_shutil_move(src, dst, *args, **kwargs)
 
+    def guarded_path_rename(self: Path, target: Any) -> Path:
+        assert_not_real_home_write(target, allow_real_home=allow_real_home)
+        return original_path_rename(self, target)
+
+    def guarded_path_replace(self: Path, target: Any) -> Path:
+        assert_not_real_home_write(target, allow_real_home=allow_real_home)
+        return original_path_replace(self, target)
+
     monkeypatch.setattr(sys, "dont_write_bytecode", True)
     monkeypatch.setattr(builtins, "open", guarded_builtin_open)
     monkeypatch.setattr(os, "open", guarded_os_open)
     monkeypatch.setattr(os, "mkdir", guarded_os_mkdir)
     monkeypatch.setattr(os, "makedirs", guarded_os_makedirs)
+    monkeypatch.setattr(os, "rename", guarded_os_rename)
+    monkeypatch.setattr(os, "replace", guarded_os_replace)
     monkeypatch.setattr(shutil, "copy", guarded_shutil_copy)
     monkeypatch.setattr(shutil, "copy2", guarded_shutil_copy2)
     monkeypatch.setattr(shutil, "copyfile", guarded_shutil_copyfile)
@@ -149,6 +171,8 @@ def isolated_test_home(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureR
     monkeypatch.setattr(Path, "touch", guarded_touch)
     monkeypatch.setattr(Path, "mkdir", guarded_mkdir)
     monkeypatch.setattr(Path, "open", guarded_open)
+    monkeypatch.setattr(Path, "rename", guarded_path_rename)
+    monkeypatch.setattr(Path, "replace", guarded_path_replace)
 
     if allow_real_home:
         return

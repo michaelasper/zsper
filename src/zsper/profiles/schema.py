@@ -12,6 +12,34 @@ STORAGE_BACKENDS = frozenset({"postgres-pgvector", "sqlite-local"})
 REMOTE_ACCESS_POLICIES = frozenset({"disabled", "tailscale-serve-only"})
 NETWORK_POLICIES = frozenset({"local-first", "offline"})
 SCHEMA_VERSION = 1
+REQUIRED_PROFILE_FIELDS = (
+    "schema_version",
+    "name",
+    "mode",
+    "root",
+    "model_profile",
+    "long_context_fallback",
+    "embedding_profile",
+    "storage_backend",
+    "remote_access_policy",
+    "network_policy",
+    "database_name",
+    "created_at",
+    "updated_at",
+)
+REQUIRED_STRING_FIELDS = (
+    "name",
+    "mode",
+    "root",
+    "model_profile",
+    "embedding_profile",
+    "storage_backend",
+    "remote_access_policy",
+    "network_policy",
+    "database_name",
+    "created_at",
+    "updated_at",
+)
 
 
 class ProfileError(ValueError):
@@ -36,11 +64,21 @@ class Profile:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Profile":
+        if not isinstance(data, dict):
+            raise ProfileError("profile JSON must be an object")
+        for field in REQUIRED_PROFILE_FIELDS:
+            if field not in data:
+                raise ProfileError(f"missing required profile field: {field}")
+
+        root = data["root"]
+        if not isinstance(root, str) or not root.strip():
+            raise ProfileError("profile root must be a non-empty string")
+
         profile = cls(
             schema_version=data["schema_version"],
             name=data["name"],
             mode=data["mode"],
-            root=str(Path(data["root"]).expanduser().resolve(strict=False)),
+            root=str(Path(root).expanduser().resolve(strict=False)),
             model_profile=data["model_profile"],
             long_context_fallback=data.get("long_context_fallback"),
             embedding_profile=data["embedding_profile"],
@@ -73,8 +111,22 @@ class Profile:
 
 
 def validate_profile(profile: Profile) -> None:
+    if not isinstance(profile.schema_version, int) or isinstance(
+        profile.schema_version,
+        bool,
+    ):
+        raise ProfileError("profile schema_version must be an integer")
     if profile.schema_version != SCHEMA_VERSION:
         raise ProfileError(f"unsupported profile schema_version: {profile.schema_version}")
+    for field in REQUIRED_STRING_FIELDS:
+        value = getattr(profile, field)
+        if not isinstance(value, str) or not value.strip():
+            raise ProfileError(f"profile {field} must be a non-empty string")
+    if profile.long_context_fallback is not None and (
+        not isinstance(profile.long_context_fallback, str)
+        or not profile.long_context_fallback.strip()
+    ):
+        raise ProfileError("profile long_context_fallback must be a string or null")
     if profile.mode not in PROFILE_MODES:
         raise ProfileError(f"invalid profile mode: {profile.mode}")
     if profile.storage_backend not in STORAGE_BACKENDS:

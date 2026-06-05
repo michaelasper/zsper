@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -51,6 +52,15 @@ POLICY_DEFINITION_FILES = frozenset(
         Path("security/network_policy.py"),
     }
 )
+PLUGIN_METADATA_FILENAME = "plugin.toml"
+PLUGIN_METADATA_REQUIRED_KEYS = frozenset(
+    {
+        "network_behavior",
+        "secret_requirements",
+        "profile_scope",
+        "disabled_by_default",
+    }
+)
 
 
 class HostedDependencyError(RuntimeError):
@@ -74,8 +84,6 @@ def _should_scan(path: Path, root: Path) -> bool:
     parts = set(relative.parts)
     if "docs" in parts:
         return False
-    if "plugins" in parts:
-        return False
     return True
 
 
@@ -83,6 +91,42 @@ def _iter_files(root: Path) -> list[Path]:
     if root.is_file():
         return [root]
     return [path for path in root.rglob("*") if path.is_file()]
+
+
+def _is_plugin_path(path: Path, root: Path) -> bool:
+    return "plugins" in path.relative_to(root).parts
+
+
+def _plugin_metadata_candidates(path: Path) -> list[Path]:
+    candidates = [path] if path.name == PLUGIN_METADATA_FILENAME else []
+    candidates.append(path.parent / PLUGIN_METADATA_FILENAME)
+    return candidates
+
+
+def _plugin_metadata_errors(path: Path) -> list[str]:
+    metadata_path = next(
+        (candidate for candidate in _plugin_metadata_candidates(path) if candidate.is_file()),
+        None,
+    )
+    if metadata_path is None:
+        return [f"missing {PLUGIN_METADATA_FILENAME}"]
+
+    try:
+        metadata = tomllib.loads(metadata_path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as exc:
+        return [f"invalid {PLUGIN_METADATA_FILENAME}: {exc}"]
+
+    missing = sorted(PLUGIN_METADATA_REQUIRED_KEYS - set(metadata))
+    errors = [f"missing plugin metadata keys: {', '.join(missing)}"] if missing else []
+    if metadata.get("network_behavior") != "disabled-by-default":
+        errors.append("plugin metadata network_behavior must be disabled-by-default")
+    if metadata.get("profile_scope") != "profile-local":
+        errors.append("plugin metadata profile_scope must be profile-local")
+    if metadata.get("disabled_by_default") is not True:
+        errors.append("plugin metadata disabled_by_default must be true")
+    if not metadata.get("secret_requirements"):
+        errors.append("plugin metadata secret_requirements must be declared")
+    return errors
 
 
 def scan_for_forbidden_hosted_dependencies(
@@ -100,12 +144,22 @@ def scan_for_forbidden_hosted_dependencies(
             lowered = line.lower()
             for dependency, needles in FORBIDDEN_DEPENDENCIES.items():
                 if any(needle in lowered for needle in needles):
+                    if _is_plugin_path(path, scan_root):
+                        errors = _plugin_metadata_errors(path)
+                        if not errors:
+                            continue
+                        finding_text = (
+                            f"{line.strip()} "
+                            f"(plugin metadata invalid: {'; '.join(errors)})"
+                        )
+                    else:
+                        finding_text = line.strip()
                     findings.append(
                         HostedDependencyFinding(
                             path=path,
                             dependency=dependency,
                             line=line_number,
-                            text=line.strip(),
+                            text=finding_text,
                         )
                     )
     if findings and raise_on_findings:

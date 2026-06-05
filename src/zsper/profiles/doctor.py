@@ -30,7 +30,13 @@ def _load_raw_profile(root: Path) -> dict[str, object]:
     profile_path = root / "profile.json"
     if not profile_path.is_file():
         return {}
-    return json.loads(profile_path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(profile_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ProfileError(f"invalid profile JSON at {profile_path}: {exc.msg}") from exc
+    if not isinstance(payload, dict):
+        raise ProfileError(f"profile JSON must be an object at {profile_path}")
+    return payload
 
 
 def profile_doctor(

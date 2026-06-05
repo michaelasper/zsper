@@ -39,6 +39,30 @@ This document tracks Phase 2 implementation status for
 - `llm-server` remains an external dependency through command templates and the
   local OpenAI-compatible HTTP contract; Zsper product code does not import
   `llm-server` internals.
+- The DAG originally named separate profile/code command modules and test files.
+  The current implementation keeps the small command handlers in `src/zsper/cli.py`
+  and tests them through `tests/unit/profiles/test_profile_cli.py` and
+  `tests/unit/code/test_code_cli.py`; this is a file-layout difference, not a
+  behavior gap.
+- `profile doctor` is intentionally a Phase 2 static profile health check:
+  schema, registry consistency, directory layout, writability, network policy,
+  remote policy, and hosted integration settings. Database reachability,
+  local-model availability, Brain API, web UI, SearXNG, and richer service health
+  stay with later Brain/platform health tasks.
+
+## 2026-06-05 Audit Remediation
+
+- Malformed `profile.json` handling now reports `ProfileError` instead of raw
+  `KeyError` or `JSONDecodeError`.
+- Profile schema validation now rejects missing required fields, wrong field
+  types, and empty required strings before profile use.
+- `resolve_profile_context` is exported from `zsper.profiles` so callers can use
+  the profile plus profile-local path context promised by the DAG.
+- Hosted dependency scanning now allows plugin references only when plugin
+  metadata declares network behavior, secret requirements, profile scope, and
+  disabled-by-default status.
+- The test harness now blocks rename/replace writes into the real user home in
+  addition to common open, mkdir, copy, and pathlib write APIs.
 
 ## Verification Commands
 

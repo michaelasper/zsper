@@ -117,6 +117,39 @@ def test_real_home_write_guard_blocks_common_non_pathlib_write_apis(
         operation(REAL_USER_HOME)
 
 
+@pytest.mark.parametrize(
+    ("operation_name", "operation"),
+    (
+        pytest.param("os_rename", lambda src, dst: os.rename(src, dst), id="os-rename"),
+        pytest.param("os_replace", lambda src, dst: os.replace(src, dst), id="os-replace"),
+        pytest.param(
+            "path_rename",
+            lambda src, dst: src.rename(dst),
+            id="path-rename",
+        ),
+        pytest.param(
+            "path_replace",
+            lambda src, dst: src.replace(dst),
+            id="path-replace",
+        ),
+    ),
+)
+def test_real_home_write_guard_blocks_rename_and_replace_targets(
+    tmp_path: Path,
+    operation_name: str,
+    operation: Callable[[Path, Path], object],
+) -> None:
+    source = tmp_path / f"{operation_name}.txt"
+    source.write_text("safe source", encoding="utf-8")
+    target = REAL_USER_HOME / ".zsper-nonexistent-write-guard" / f"{operation_name}.txt"
+
+    with pytest.raises(RuntimeError, match="Refusing to write under real user home"):
+        operation(source, target)
+
+    assert source.exists()
+    assert not target.exists()
+
+
 def test_real_home_write_guard_allows_explicit_opt_out_without_writing() -> None:
     harness = importlib.import_module("conftest")
     target = REAL_USER_HOME / ".zsper-not-written-by-test"

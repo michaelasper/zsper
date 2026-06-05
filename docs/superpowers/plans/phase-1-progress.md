@@ -22,3 +22,6 @@ Branch: `feat/phase-1-foundation`
 - FND-005 review found the web command did not match the DAG and link tests did not resolve Markdown targets; fixed to `npm --prefix apps/brain-web test` and actual local link resolution.
 - Final Phase 1 verification before commit: `pytest tests/unit -v` -> 63 passed; `pytest --collect-only` -> 63 collected.
 - Agent definition fix verification: `codex doctor` -> 0 warn, 0 fail, with no malformed agent-role warnings.
+- 2026-06-05 audit note: the verification counts above are historical Phase 1
+  counts. The current repository includes Phase 2 and out-of-order air/offline
+  work; current full-suite audit verification is `pytest -q` -> 189 passed.

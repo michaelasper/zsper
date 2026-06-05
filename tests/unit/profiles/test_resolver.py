@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+import zsper.profiles as profiles
 from zsper.profiles.defaults import default_profile
 from zsper.profiles.init import initialize_profile, write_profile
 from zsper.profiles.resolver import resolve_profile, resolve_profile_context
@@ -45,6 +46,50 @@ def test_resolver_returns_profile_local_paths(
     assert resolved.code_dir == Path(created.root) / "code"
     assert resolved.brain_dir == Path(created.root) / "brain"
     assert resolved.secrets_dir == Path(created.root) / "secrets"
+
+
+def test_resolver_context_is_exported_from_profiles_package(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    created = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+
+    resolved = profiles.resolve_profile_context(
+        "work",
+        registry_path=isolated_registry_path,
+    )
+
+    assert resolved.profile.root == created.root
+
+
+def test_resolver_reports_invalid_profile_json(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    root = tmp_path / "broken"
+    root.mkdir()
+    (root / "profile.json").write_text("{not-json", encoding="utf-8")
+
+    with pytest.raises(ProfileError, match="invalid profile JSON"):
+        resolve_profile(str(root), registry_path=isolated_registry_path)
+
+
+def test_resolver_reports_missing_profile_json_fields(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    root = tmp_path / "missing-field"
+    root.mkdir()
+    payload = default_profile(mode="work", root=root).to_dict()
+    del payload["model_profile"]
+    (root / "profile.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ProfileError, match="missing required profile field: model_profile"):
+        resolve_profile(str(root), registry_path=isolated_registry_path)
 
 
 def test_resolver_refuses_registry_metadata_mismatch(
