@@ -151,7 +151,7 @@ Milestone: M4 Documents, RAG, And Citations
   contexts.
 - Mutating document flows append profile-local JSONL ledger records while
   preserving Postgres/pgvector as the online canonical store target.
-- Air profiles keep a SQLite-compatible/file-only iteration path.
+- `air-offline` profiles keep a SQLite-compatible/file-only iteration path.
 - Retrieval remains hybrid BM25 plus dense vectors; dense-only core retrieval is
   not acceptable.
 - Any answer that uses retrieved context returns exact citation objects with

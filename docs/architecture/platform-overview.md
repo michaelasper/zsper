@@ -6,6 +6,8 @@ Source references:
   (`docs/zsper-local-ai-platform-ultimate-spec.md`)
 - [Implementation DAG](../superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md)
   (`docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md`)
+- [Profile modes](profile-modes.md)
+  (`docs/architecture/profile-modes.md`)
 
 This document summarizes the platform shape that future implementation tasks
 should preserve. The full requirements remain in
@@ -30,8 +32,8 @@ storage where the spec calls for them.
 
 ## Core Architecture
 
-- Profiles are the isolation boundary. Work, personal, and air/offline profiles
-  share code but never share state.
+- Profiles are the isolation boundary. Work, personal, and portable
+  (`air-offline`) profiles share code but never share state.
 - Mutations are mirrored to append-only JSONL ledgers for auditability,
   recovery, and offline troubleshooting.
 - Brain retrieval is hybrid BM25 + dense vector search. BM25 protects exact
@@ -86,6 +88,6 @@ launch, stream events, attach artifacts, finish, and resume.
 
 ### Phase 7: Offline And Security Gates
 
-Enforce air/offline policy, no-network tests, hosted-call detection, remote
+Enforce offline profile policy, no-network tests, hosted-call detection, remote
 access rules, secret redaction, and config patch safeguards. Exit when forbidden
 hosted calls, Tailscale Funnel, cross-profile reads, and secret leaks fail tests.

@@ -42,7 +42,7 @@ Communication is through repository files, tests, and ledgers only. Agents must 
 | Milestone | Goal | Exit Gate |
 | --- | --- | --- |
 | M0 Foundation | Repo baseline, Python package, test runner, empty CLI, architecture docs. | `pytest --collect-only` and CLI help tests pass. |
-| M1 Profiles And Security Core | Work/personal/air profiles, registry, resolver, directory layout, redaction, network and remote policy primitives. | Work/personal/air profile tests pass and policy tests reject invalid states. |
+| M1 Profiles And Security Core | Work, personal, and `air-offline` profiles, registry, resolver, directory layout, redaction, network and remote policy primitives. | Work, personal, and `air-offline` profile tests pass and policy tests reject invalid states. |
 | M2 Code Adapters | Model endpoint records, external `llm-server` contract, profile-local Zed/OpenCode/Pi/Hermes adapter generation. | Adapter golden tests pass and no product code imports `llm-server` internals. |
 | M3 Brain Platform | Profile-specific Compose, Postgres/pgvector schema, Redis, ledgers, FastAPI skeleton, health/status/settings, Next.js shell. | `zsper brain status` reports profile-scoped service state with model serving excluded from Compose. |
 | M4 Documents And RAG | Asset capture, parsing, Docling, web capture, chunking, citations, embeddings, BM25, dense vectors, hybrid search, grounded answers. | Markdown/PDF/web/repo fixtures ingest and answer with exact chunk citation objects. |
@@ -624,7 +624,7 @@ Create and evolve these paths as tasks require them:
 - Verify no forbidden hosted integration is configured in core profile settings.
 
 **Acceptance Checks:**
-- Healthy work/personal/air profiles pass.
+- Healthy work, personal, and `air-offline` profiles pass.
 - Missing canonical directories, invalid policy, and forbidden hosted config fail with actionable messages.
 
 **Verification:**

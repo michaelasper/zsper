@@ -1,27 +1,27 @@
-# Out-Of-Order Air/Offline MVP
+# Out-Of-Order Portable Profile Work
 
 Source DAG: `docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md`
 
-This document tracks air/offline work that is intentionally happening out of
-the normal DAG order so the project can be copied to a laptop for travel before
-the full Brain/RAG/orchestrator milestones are complete.
+This document tracks portable profile work that is intentionally happening out
+of the normal DAG order so the project can be copied to a laptop for travel
+before the full Brain/RAG/orchestrator milestones are complete.
 
 ## Goal
 
-Make an air profile useful while Gemma 4 12B is still downloading elsewhere:
-initialize an isolated portable profile, inspect it, run doctor checks, ingest
-local files and repo docs, search those local sources, and reject networked
-ingest paths when the air profile is configured for disconnected use.
+Make an `air-offline` profile useful while Gemma 4 12B is still downloading
+elsewhere: initialise an isolated portable profile, inspect it, run doctor
+checks, ingest local files and repo docs, search those local sources, and reject
+networked ingest paths when the profile is configured for disconnected use.
 
 ## Implemented Out Of Order
 
-- `profile init/show/list/doctor` for work, personal, and air/offline profiles.
-- Air/offline defaults: Gemma 4 12B code model metadata, disabled remote access,
+- `profile init/show/list/doctor` for work, personal, and `air-offline` profiles.
+- `air-offline` defaults: Gemma 4 12B code model metadata, disabled remote access,
   offline network policy, SQLite-local storage mode, and local-small embeddings.
 - Profile-local root layout, `profile.json`, registry, and `agent-runs/runs.jsonl`.
 - Offline network policy checks that block URLs, SearXNG, hosted model/search/
   extraction APIs, plugin network access, and model artifact downloads.
-- `local-file ingest/search` MVP for air profiles:
+- `local-file ingest/search` for portable profiles:
   - copies UTF-8 local files into `brain/assets/`;
   - writes parsed text into `brain/parsed/`;
   - writes document metadata into `brain/documents/`;
@@ -32,10 +32,10 @@ ingest paths when the air profile is configured for disconnected use.
   dense vector indexing, hybrid search, and `brain answer` citation objects.
 - `./setup.sh --air` out-of-order setup path:
   - creates a project `.venv` wrapper unless `--no-venv` is used;
-  - creates or reuses the `air` profile;
+  - creates or reuses a portable `air-offline` profile;
   - writes and ingests a profile-local readiness note;
   - verifies `profile doctor` and local search before reporting readiness.
-- Air/offline documentation:
+- Portable profile documentation:
   - README quick start for `./setup.sh --air`;
   - how-to guide at `docs/runbooks/air-offline.md`;
   - testing runbook coverage for the setup script.

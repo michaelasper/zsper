@@ -14,7 +14,7 @@ TRACKING_DOC = (
 def test_air_offline_out_of_order_tracking_doc_exists() -> None:
     text = TRACKING_DOC.read_text(encoding="utf-8")
 
-    assert "Out-Of-Order Air/Offline MVP" in text
+    assert "Out-Of-Order Portable Profile Work" in text
     assert "docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md" in text
     assert "Gemma 4 12B" in text
     assert "profile init/show/list/doctor" in text

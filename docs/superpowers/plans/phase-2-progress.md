@@ -32,8 +32,8 @@ This document tracks Phase 2 implementation status for
 
 ## Notes
 
-- Existing profile and air/offline work from the earlier MVP was preserved, then
-  split into the Phase 2 module boundaries required by the DAG.
+- Existing portable profile work was preserved, then split into the Phase 2
+  module boundaries required by the DAG.
 - Adapter generation remains profile-local by default. The global patch helper
   exists only as an explicit API and returns redacted diffs with backups.
 - `llm-server` remains an external dependency through command templates and the

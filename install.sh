@@ -238,13 +238,13 @@ Next:
   zsper profile use work
   zsper profile doctor
 
-Portable/air profile:
-  zsper profile init --mode air-offline --root "$data_home/zsper/profiles/air" --name air
-  zsper profile use air
+Portable profile:
+  zsper profile init --mode air-offline --root "$data_home/zsper/profiles/portable" --name portable
+  zsper profile use portable
 
-Air profiles are for portable or lower-compute contexts. The current MVP mode
-name is air-offline because hosted model/search/extraction calls are blocked
-until a local laptop runtime is configured.
+The air-offline mode is for portable, disconnected, or lower-compute contexts.
+It blocks hosted model, search, extraction, and model-download calls until the
+profile policy changes.
 EOF
 
   case ":$PATH:" in

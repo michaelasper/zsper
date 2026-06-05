@@ -158,7 +158,7 @@ and asserts no shared state at every boundary.
 `~/source/zsper`:
 
 - Owns all user-facing product commands.
-- Owns work/personal/air profile initialization and isolation.
+- Owns work, personal, and `air-offline` profile initialization and isolation.
 - Generates client configs for Zed, OpenCode, Pi/little-coder, and optional
   Hermes launcher profiles.
 - Owns `zsper-brain` web app, local APIs, data model, RAG, memories, notes,
@@ -1374,7 +1374,7 @@ Deliverables:
 
 Success criteria:
 
-- Air profile works without network.
+- `air-offline` profiles work without network.
 - Forbidden hosted calls fail tests.
 - Personal Serve policy is allowed.
 - Funnel is rejected.

@@ -1,7 +1,7 @@
 # Zsper
 
 <p align="center">
-  <b>Local-first AI workflows that keep profile data isolated and usable offline.</b>
+  <b>A local AI workspace with profile isolation, Brain storage, RAG, and agent-ready workflows.</b>
 </p>
 
 ```bash
@@ -10,121 +10,103 @@ zsper profile init --mode work --root "$HOME/.local/share/zsper/profiles/work"
 zsper profile use work
 ```
 
-## TL;DR
+Zsper keeps local AI work organised by profile. Each profile owns its config,
+Brain data, retrieval indexes, ledgers, runtime files, and generated adapter
+settings. Model serving stays outside this repository and is reached through
+local OpenAI-compatible endpoints.
 
-**Problem:** local AI work often mixes personal, work, travel, model-serving,
-and agent state until it is hard to trust what data moved where.
+## Why Zsper
 
-**Solution:** Zsper gives each workflow a profile boundary, a CLI surface, and
-profile-local Brain storage. The current MVP keeps install profile-neutral:
-create work, personal, or portable/air profiles after the CLI is installed.
-
-| Feature | Benefit |
+| Capability | What it gives you |
 | --- | --- |
-| Profile-neutral install | Install the CLI without silently choosing a profile. |
-| Portable/air setup | Prepare an isolated lower-compute travel profile explicitly. |
-| Profile-local Brain files | Ingest and search UTF-8 local files without hosted calls. |
-| Explicit boundaries | Keep product code in `zsper` and model serving in `llm-server`. |
-| Append-only ledgers | Record Brain file mutations in profile-local JSONL. |
+| Profile isolation | Keep work, personal, and portable contexts separate by default. |
+| Local Brain storage | Store documents, chunks, citations, notes, tasks, and runtime metadata under the selected profile. |
+| Hybrid BM25 + dense retrieval | Balance exact terms with semantic recall. |
+| Citation objects | `brain answer` returns citation objects that can be inspected later. |
+| Local model contracts | Use `llm-server` or another local OpenAI-compatible service without importing model-server internals. |
+| Append-only ledgers | Mirror mutating Brain records to profile-local JSONL for audit and recovery. |
 
 ## Quick Start
 
 ```bash
-# 1. Install the CLI into your home directory.
+# Install the CLI into your home directory.
 curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh | bash
 
-# 2. Create a profile. Installation does not create one for you.
+# Create a profile. Installation does not choose one for you.
 zsper profile init --mode work --root "$HOME/.local/share/zsper/profiles/work"
 
-# 3. Choose the default profile for commands that omit --profile.
+# Set the default profile for commands that omit --profile.
 zsper profile use work
 
-# 4. Ingest a local UTF-8 file.
-zsper brain ingest ~/notes/flight.md
+# Check the profile layout and policy.
+zsper profile doctor
 
-# 5. Search local profile content.
-zsper brain search offline
+# Ingest and search local content.
+zsper brain ingest ~/notes/project.md
+zsper brain search project
+```
 
-# 6. Verify the profile layout.
+## Profile Modes
+
+Profiles define the trust and runtime boundary for a workflow.
+
+| Mode | Use it for | Storage | Network posture |
+| --- | --- | --- | --- |
+| `work` | Professional projects and private work data | Postgres + pgvector | Local-first, remote access disabled |
+| `personal` | Personal projects and private personal data | Postgres + pgvector | Local-first, Tailscale Serve allowed |
+| `air-offline` | Portable, disconnected, or lower-compute contexts | Profile-local SQLite path | Offline policy, hosted calls blocked |
+
+The mode is not the profile name. Choose names that match the machine or
+workflow, such as `work`, `personal`, `portable`, `field`, or `travel`.
+
+Read [Profile Modes](docs/architecture/profile-modes.md) for the design
+model and the exact defaults.
+
+## Install
+
+The installer creates a managed checkout, virtual environment, wrapper command,
+and home-scoped configuration. It does not create a profile or set a default.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh | bash
+```
+
+After install:
+
+```bash
+zsper profile init --mode work --root "$HOME/.local/share/zsper/profiles/work"
+zsper profile use work
 zsper profile doctor
 ```
 
-For the portable/air workflow, use
-[docs/runbooks/air-offline.md](docs/runbooks/air-offline.md).
-
-## What Works Now
-
-| Workflow | Example |
-| --- | --- |
-| Install CLI | `curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh \| bash` |
-| Initialise profiles | `zsper profile init --mode work --root "$HOME/.local/share/zsper/profiles/work"` |
-| Choose default profile | `zsper profile use work` |
-| List profiles | `zsper profile list` |
-| Inspect a profile | `zsper profile show` |
-| Doctor a profile | `zsper profile doctor` |
-| Ingest local text | `zsper brain ingest ./notes.md` |
-| Search local text | `zsper brain search notes` |
-
-`./setup.sh --air` creates a project virtual environment by default, writes a
-small `zsper` wrapper into `.venv/bin/`, initialises or reuses the air profile,
-ingests a readiness note, and verifies offline search. It does not download
-models or call hosted APIs. It is a repository-local helper; the polished
-installer is `install.sh`.
-
-## Installation And Setup
-
-### Polished install
+For a portable profile:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh | bash
+zsper profile init \
+  --mode air-offline \
+  --name portable \
+  --root "$HOME/.local/share/zsper/profiles/portable"
+zsper profile use portable
 ```
 
-The installer clones or updates Zsper under `~/.local/share/zsper/app`, creates
-a managed virtual environment under `~/.local/share/zsper/venv`, writes
-`~/.local/bin/zsper`, and creates home-scoped config files under
-`~/.config/zsper`. It does not create a profile or set a default.
-
-After installing, create the profile you want:
-
-```bash
-zsper profile init --mode work --root "$HOME/.local/share/zsper/profiles/work"
-zsper profile use work
-```
-
-For a portable/air profile on a laptop or lower-compute machine:
-
-```bash
-zsper profile init --mode air-offline --root "$HOME/.local/share/zsper/profiles/air" --name air
-zsper profile use air
-```
-
-The current MVP mode name is `air-offline` because hosted model, search, and
-extraction calls are blocked until a local laptop runtime is configured. The
-profile itself is not the install default.
-
-### Source checkout for development
+## Develop From Source
 
 ```bash
 git clone https://github.com/michaelasper/zsper.git
 cd zsper
-python -m pip install -e .
-zsper --help
+python -m pip install -e ".[api,database,rag]"
+python -m zsper --help
 ```
 
-### Editable package install
+To prepare a portable profile from a checkout:
 
 ```bash
-python -m pip install -e .
-zsper --help
+./setup.sh --air --name portable
 ```
 
-Use the editable install when network and Python packaging dependencies are
-available. The air setup script keeps the current MVP usable from source on a
-travel machine:
-
-```bash
-./setup.sh --air
-```
+`./setup.sh --air` is a source-tree convenience wrapper. It prepares a portable
+profile, creates a readiness note, ingests it, and verifies local search without
+hosted model, search, or extraction calls.
 
 ## Repository Boundary
 
@@ -137,60 +119,58 @@ Zsper is split from `llm-server`:
 
 Zsper may use `llm-server` only through stable external contracts such as an
 environment variable, command template, deploy contract file, or local
-OpenAI-compatible HTTP endpoint. It must not import benchmark internals or move
-product platform responsibilities into `llm-server`.
+OpenAI-compatible HTTP endpoint. It must not import benchmark internals, store
+profile data in `llm-server`, generate adapters from `llm-server`, or add
+Brain/RAG/memory/tasks to `llm-server`.
 
-See [docs/architecture/repository-boundary.md](docs/architecture/repository-boundary.md)
-for the allowed and disallowed dependency forms.
+See [Repository Boundary](docs/architecture/repository-boundary.md) for the
+allowed and disallowed dependency forms.
 
 ## Documentation
 
 | Need | Start here |
 | --- | --- |
-| Product direction | [docs/zsper-local-ai-platform-ultimate-spec.md](docs/zsper-local-ai-platform-ultimate-spec.md) |
-| Implementation order | [docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md](docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md) |
-| Platform overview | [docs/architecture/platform-overview.md](docs/architecture/platform-overview.md) |
-| Portable/air setup | [docs/runbooks/air-offline.md](docs/runbooks/air-offline.md) |
-| Local development | [docs/runbooks/local-development.md](docs/runbooks/local-development.md) |
-| Test commands | [docs/runbooks/testing.md](docs/runbooks/testing.md) |
+| Understand profile modes | [Profile Modes](docs/architecture/profile-modes.md) |
+| Understand the platform shape | [Platform Overview](docs/architecture/platform-overview.md) |
+| Prepare a portable profile | [Portable Profile Runbook](docs/runbooks/air-offline.md) |
+| Develop locally | [Local Development](docs/runbooks/local-development.md) |
+| Run verification | [Testing](docs/runbooks/testing.md) |
+| Read the full product spec | [Ultimate Spec](docs/zsper-local-ai-platform-ultimate-spec.md) |
+| Follow implementation order | [Implementation DAG](docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md) |
 
-## Limitations
+## Current Constraints
 
-| Limitation | Workaround | Planned direction |
-| --- | --- | --- |
-| Air is local-first but not always fully offline | Keep URL ingest disabled when traveling or disconnected | Per-profile network policy stays explicit |
-| RAG ingest depends on local parser/runtime availability | Install optional local Docling and model services before rich ingest/answer flows | More setup checks in profile doctor |
-| Hybrid BM25 + dense retrieval needs local indexes per profile | Run `zsper brain ingest` again after profile/storage changes | Automatic index repair and rebuild commands |
-| `brain answer` returns citation objects and requires a local model endpoint | Point the profile model URL at a local OpenAI-compatible server | Richer citation inspection and reranking |
-| Model download and serving are outside this repo | Prepare models through `llm-server` or another local serving contract | Stable local model adapter contracts |
+| Constraint | Current path |
+| --- | --- |
+| Model download and serving live outside this repo | Prepare models through `llm-server` or another local OpenAI-compatible serving contract. |
+| Rich parsing depends on local runtimes | Install the `rag` extras and keep Docling and embedding models available locally. |
+| Work and personal RAG use local Postgres services | Run profile Brain services before using Postgres-backed ingest/search flows. |
+| Portable profiles block hosted calls | Use local files and local model endpoints unless the profile policy changes. |
 
 ## Troubleshooting
 
-### `install.sh` or `./setup.sh --air` says Python is too old
+### `zsper` is not on `PATH`
 
-Install Python 3.12 or newer, then rerun:
+Add the wrapper directory to your shell:
 
 ```bash
-PYTHON=python3.12 ./setup.sh --air
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-For the installer, make sure `python3.12` is on `PATH`.
+### Python is too old
 
-### The `air` profile already exists
-
-The setup script reuses an existing registered `air` profile. To create a
-separate air profile root, choose a different name and root:
+Zsper requires Python 3.12 or newer.
 
 ```bash
-./setup.sh --air --name air-laptop --root "$HOME/.local/share/zsper/profiles/air-laptop"
+PYTHON=python3.12 ./setup.sh --air --name portable
 ```
 
 ### Search returns no results
 
-Confirm the file was ingested into the same profile registry:
+Confirm that the same profile was selected for ingest and search:
 
 ```bash
 zsper profile list
-zsper brain ingest --profile air ./notes.md
-zsper brain search --profile air notes
+zsper brain ingest --profile work ./notes.md
+zsper brain search --profile work notes
 ```

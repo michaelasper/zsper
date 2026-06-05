@@ -5,19 +5,19 @@ usage() {
   cat <<'USAGE'
 Usage: ./setup.sh --air [options]
 
-Prepare this checkout for the current portable/air MVP.
+Prepare this checkout for a portable profile.
 
 Options:
-  --air              Prepare the portable/air profile.
-  --root PATH        Profile root. Defaults to $XDG_DATA_HOME/zsper/profiles/air.
-  --name NAME        Profile name. Defaults to air.
+  --air              Prepare a portable profile using air-offline mode.
+  --root PATH        Profile root. Defaults to $XDG_DATA_HOME/zsper/profiles/portable.
+  --name NAME        Profile name. Defaults to portable.
   --registry PATH    Profile registry. Defaults to $XDG_CONFIG_HOME/zsper/profiles.json.
   --no-venv          Skip creating .venv and run from the source checkout.
   -h, --help         Show this help.
 
 Environment:
-  ZSPER_AIR_ROOT          Default air profile root.
-  ZSPER_AIR_NAME          Default air profile name.
+  ZSPER_AIR_ROOT          Default portable profile root.
+  ZSPER_AIR_NAME          Default portable profile name.
   ZSPER_PROFILE_REGISTRY  Default profile registry path.
   ZSPER_VENV              Project virtual environment path.
   PYTHON                  Python executable to use.
@@ -26,7 +26,7 @@ USAGE
 
 air=0
 create_venv=1
-air_name="${ZSPER_AIR_NAME:-air}"
+air_name="${ZSPER_AIR_NAME:-portable}"
 air_root="${ZSPER_AIR_ROOT:-}"
 registry="${ZSPER_PROFILE_REGISTRY:-}"
 python_bin="${PYTHON:-}"
@@ -154,17 +154,17 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 profile_json="$tmp_dir/profile.json"
 
-echo "Preparing Zsper portable/air profile"
+echo "Preparing Zsper portable profile"
 echo "Repo: $repo_root"
 echo "Registry: $registry"
 echo "Requested root: $air_root"
 
 if run_zsper profile show --profile "$air_name" > "$profile_json" 2>/dev/null; then
   profile_ref="$air_name"
-  echo "Using existing air profile: $air_name"
+  echo "Using existing portable profile: $air_name"
 elif run_zsper profile show --profile "$air_root" > "$profile_json" 2>/dev/null; then
   profile_ref="$air_root"
-  echo "Using existing air profile root: $air_root"
+  echo "Using existing portable profile root: $air_root"
 else
   run_zsper profile init --mode air-offline --root "$air_root" --name "$air_name"
   run_zsper profile show --profile "$air_name" > "$profile_json"
@@ -195,19 +195,19 @@ print(profile["root"])
 PY
 )"
 
-note_path="$actual_root/brain/notes/air-readiness.md"
+note_path="$actual_root/brain/notes/portable-readiness.md"
 mkdir -p "$(dirname "$note_path")"
 {
-  printf '%s\n' '# Air Offline Readiness'
+  printf '%s\n' '# Portable Profile Readiness'
   printf '\n'
   printf '%s\n' 'This local note is created by ./setup.sh --air.'
-  printf '%s\n' 'It verifies that the air profile can ingest and search offline content.'
-  printf '%s\n' 'Use local files only while travelling; hosted model, search, and extraction calls stay blocked.'
+  printf '%s\n' 'It verifies that the portable offline profile can ingest and search local content.'
+  printf '%s\n' 'Use local files while travelling; hosted model, search, and extraction calls stay blocked.'
 } > "$note_path"
 
 run_zsper profile doctor --profile "$profile_ref" >/dev/null
 
-if run_zsper brain search --profile "$profile_ref" offline | grep -F "air-readiness.md" >/dev/null; then
+if run_zsper brain search --profile "$profile_ref" offline | grep -F "portable-readiness.md" >/dev/null; then
   echo "Readiness note already indexed"
 else
   run_zsper brain ingest --profile "$profile_ref" "$note_path" >/dev/null
@@ -217,13 +217,13 @@ fi
   --profile-json "$profile_json" \
   --source "$note_path" >/dev/null
 
-if ! run_zsper brain search --profile "$profile_ref" offline | grep -F "air-readiness.md" >/dev/null; then
+if ! run_zsper brain search --profile "$profile_ref" offline | grep -F "portable-readiness.md" >/dev/null; then
   echo "Offline search smoke check failed." >&2
   exit 1
 fi
 
 echo
-echo "Air profile ready"
+echo "Portable profile ready"
 echo "Profile: $profile_ref"
 echo "Root: $actual_root"
 echo

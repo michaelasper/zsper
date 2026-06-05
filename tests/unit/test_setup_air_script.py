@@ -38,7 +38,7 @@ class SentenceTransformer:
     return f"{fake_root}:{REPO_ROOT / 'src'}"
 
 
-def test_setup_air_script_prepares_isolated_air_profile(tmp_path: Path) -> None:
+def test_setup_air_script_prepares_isolated_portable_profile(tmp_path: Path) -> None:
     home = tmp_path / "home"
     config_home = tmp_path / "config"
     data_home = tmp_path / "data"
@@ -60,11 +60,11 @@ def test_setup_air_script_prepares_isolated_air_profile(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0, result.stderr
-    assert "Air profile ready" in result.stdout
+    assert "Portable profile ready" in result.stdout
     assert (config_home / "zsper" / "profiles.json").is_file()
-    air_root = data_home / "zsper" / "profiles" / "air"
-    assert (air_root / "profile.json").is_file()
-    assert (air_root / "brain" / "ledgers" / "documents.jsonl").is_file()
+    portable_root = data_home / "zsper" / "profiles" / "portable"
+    assert (portable_root / "profile.json").is_file()
+    assert (portable_root / "brain" / "ledgers" / "documents.jsonl").is_file()
 
     search = subprocess.run(
         [
@@ -74,7 +74,7 @@ def test_setup_air_script_prepares_isolated_air_profile(tmp_path: Path) -> None:
             "brain",
             "search",
             "--profile",
-            "air",
+            "portable",
             "offline",
         ],
         cwd=REPO_ROOT,
@@ -85,7 +85,7 @@ def test_setup_air_script_prepares_isolated_air_profile(tmp_path: Path) -> None:
     )
 
     assert search.returncode == 0, search.stderr
-    assert "air-readiness.md" in search.stdout
+    assert "portable-readiness.md" in search.stdout
 
 
 def test_setup_air_script_is_rerunnable(tmp_path: Path) -> None:
@@ -117,7 +117,7 @@ def test_setup_air_script_is_rerunnable(tmp_path: Path) -> None:
 
     assert first.returncode == 0, first.stderr
     assert second.returncode == 0, second.stderr
-    assert "Using existing air profile" in second.stdout
+    assert "Using existing portable profile" in second.stdout
 
 
 def test_setup_air_default_venv_installs_rag_runtime_dependencies() -> None:
