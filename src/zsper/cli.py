@@ -19,7 +19,15 @@ GROUP_COMMANDS: dict[str, tuple[str, ...]] = {
         "install-opencode",
         "install-pi",
     ),
-    "brain": ("up", "down", "status", "ingest", "search", "answer"),
+    "brain": (
+        "up",
+        "down",
+        "status",
+        "context-server",
+        "ingest",
+        "search",
+        "answer",
+    ),
     "agent": ("run", "attach", "status", "cancel"),
 }
 PROFILE_MODES = ("work", "personal", "air-offline")
@@ -204,6 +212,16 @@ def _configure_reserved_signature(
         command_parser.add_argument("path_or_url", nargs="?")
         return
 
+    if group == "brain" and command == "context-server":
+        command_parser.add_argument(
+            "--endpoint",
+            help=(
+                "Context server endpoint to advertise. Defaults to the "
+                "stdio placeholder contract."
+            ),
+        )
+        return
+
     if group == "brain" and command in {"search", "answer"}:
         command_parser.add_argument("query", nargs="*")
         return
@@ -232,6 +250,10 @@ def _brain_handler(command: str):
         from zsper.brain.commands import handler
 
         return handler(command)
+    if command == "context-server":
+        from zsper.brain.context_server import command as context_server_command
+
+        return context_server_command
 
     return {
         "ingest": _brain_ingest,
