@@ -7,6 +7,13 @@ from zsper.rag.chunking import (
     ChunkingResult,
     chunk_document,
 )
+from zsper.rag.citations import (
+    CitationAnchorResult,
+    CitationError,
+    CitationSourceContext,
+    generate_citation_anchors,
+    inspect_citation_source,
+)
 from zsper.rag.models import (
     DOCUMENT_PARSERS,
     DOCUMENT_SOURCE_TYPES,
@@ -32,6 +39,9 @@ __all__ = [
     "POSTGRES_RAG_SCHEMA_SQL",
     "SQLITE_RAG_SCHEMA_SQL",
     "CitationAnchor",
+    "CitationAnchorResult",
+    "CitationError",
+    "CitationSourceContext",
     "ChunkLocationMetadata",
     "ChunkSourceLocation",
     "ChunkingError",
@@ -45,5 +55,7 @@ __all__ = [
     "RagPolicyGate",
     "RagStoreError",
     "chunk_document",
+    "generate_citation_anchors",
+    "inspect_citation_source",
     "replay_document_metadata",
 ]
