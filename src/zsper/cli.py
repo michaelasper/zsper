@@ -228,6 +228,11 @@ def _profile_handler(command: str):
 
 
 def _brain_handler(command: str):
+    if command in {"up", "down", "status"}:
+        from zsper.brain.commands import handler
+
+        return handler(command)
+
     return {
         "ingest": _brain_ingest,
         "search": _brain_search,

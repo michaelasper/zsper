@@ -17,10 +17,18 @@ GROUP_COMMANDS = {
     "brain": ("up", "down", "status", "ingest", "search", "answer"),
     "agent": ("run", "attach", "status", "cancel"),
 }
+IMPLEMENTED_GROUP_COMMANDS = {
+    "profile": GROUP_COMMANDS["profile"],
+    "code": GROUP_COMMANDS["code"],
+    "brain": ("up", "down", "status"),
+}
 PLACEHOLDER_GROUP_COMMANDS = {
-    group: commands
+    group: tuple(
+        command
+        for command in commands
+        if command not in IMPLEMENTED_GROUP_COMMANDS.get(group, ())
+    )
     for group, commands in GROUP_COMMANDS.items()
-    if group not in {"profile", "code"}
 }
 
 
