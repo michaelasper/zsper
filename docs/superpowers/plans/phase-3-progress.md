@@ -12,8 +12,8 @@ Milestone: M3 Brain Platform
 | BRAIN-002 | Postgres And pgvector Schema | BRAIN-001 | Complete | `pytest tests/unit/brain/test_schema_sql.py tests/integration/brain/test_postgres_schema.py -q` -> included in 15 passed slice verification | PASS | `feat(brain): add platform foundation` |
 | BRAIN-003 | Redis Runtime Integration | BRAIN-001, BRAIN-002 | Complete | `pytest tests/unit/brain/test_redis.py -q` -> included in 15 passed slice verification | PASS | `feat(brain): add platform foundation` |
 | BRAIN-004 | Canonical Ledger Writer | BRAIN-002, SEC-001 | Complete | `pytest tests/unit/brain/test_ledgers.py -q` -> included in 15 passed slice verification | PASS | `feat(brain): add platform foundation` |
-| BRAIN-005 | FastAPI Brain API Skeleton | BRAIN-002, BRAIN-003, BRAIN-004, PROF-005 | Pending | Pending | Pending | Pending |
-| BRAIN-006 | Health, Status, And Settings API | BRAIN-005, PROF-006, CODE-001 | Pending | Pending | Pending | Pending |
+| BRAIN-005 | FastAPI Brain API Skeleton | BRAIN-002, BRAIN-003, BRAIN-004, PROF-005 | Complete | `pytest tests/unit/brain/test_api_skeleton.py -q` -> included in 12 passed API verification | PASS | `feat(brain): add api health status settings` |
+| BRAIN-006 | Health, Status, And Settings API | BRAIN-005, PROF-006, CODE-001 | Complete | `pytest tests/unit/brain/test_health_status_settings.py -q` -> included in 12 passed API verification | PASS | `feat(brain): add api health status settings` |
 | BRAIN-007 | Brain CLI Up Down Status | BRAIN-001, BRAIN-006, FND-004 | Pending | Pending | Pending | Pending |
 | BRAIN-008 | Next.js Brain Web Shell Starter | BRAIN-006 | Pending | Pending | Pending | Pending |
 | BRAIN-009 | Brain Context Server Stub | BRAIN-005, ADAPT-001 | Pending | Pending | Pending | Pending |
@@ -31,6 +31,13 @@ Milestone: M3 Brain Platform
 - 2026-06-05: First slice review passed after fix. Local verification:
   `pytest tests/unit/brain/test_compose.py tests/unit/brain/test_schema_sql.py tests/unit/brain/test_redis.py tests/unit/brain/test_ledgers.py tests/integration/brain/test_postgres_schema.py tests/unit/test_phase3_progress_doc.py -q`
   -> 15 passed.
+- 2026-06-05: Implemented `BRAIN-005` and `BRAIN-006` as one API slice.
+  Reviewer rejected the first pass because request profile roots could be
+  ignored and database env could point one profile at another profile's
+  database; implementer added regression tests and validation for both
+  isolation gaps. Local verification:
+  `pytest tests/unit/brain/test_api_skeleton.py tests/unit/brain/test_health_status_settings.py -q`
+  -> 12 passed, 1 FastAPI/Starlette TestClient deprecation warning.
 - Later parallelization point: after `BRAIN-006`, `BRAIN-008` can proceed
   independently from `BRAIN-007` and `BRAIN-009` as long as file ownership stays
   separate.

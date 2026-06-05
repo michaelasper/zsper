@@ -15,7 +15,9 @@ HOSTED_ACTIONS = frozenset(
         "model-artifact-download",
     }
 )
-LOCALHOST_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
+LOCALHOST_NAMES = frozenset(
+    {"localhost", "127.0.0.1", "::1", "host.docker.internal", "host.containers.internal"}
+)
 
 
 class NetworkPolicyError(RuntimeError):
