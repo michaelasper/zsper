@@ -18,8 +18,12 @@ REQUIRED_TABLES = {
     "chat_messages",
     "agent_runs",
     "agent_run_events",
+    "rag_chunk_vectors",
     "settings",
 }
+
+RAG_TABLES = {"documents", "document_chunks", "citation_anchors"}
+PROFILE_METADATA_TABLES = REQUIRED_TABLES - RAG_TABLES - {"profile_metadata", "rag_chunk_vectors"}
 
 
 @pytest.mark.integration
@@ -39,6 +43,10 @@ def test_initial_migration_has_profile_scoped_foreign_keys() -> None:
     sql = render_schema_sql()
 
     for table in REQUIRED_TABLES - {"profile_metadata"}:
+        pattern = rf"CREATE TABLE IF NOT EXISTS {table}\s*\(.*?profile_id TEXT NOT NULL"
+        assert re.search(pattern, sql, re.DOTALL), table
+
+    for table in PROFILE_METADATA_TABLES:
         pattern = (
             rf"CREATE TABLE IF NOT EXISTS {table}\s*\("
             rf".*?FOREIGN KEY \(profile_id, profile_name\) "
@@ -56,6 +64,9 @@ def test_initial_migration_orders_parent_tables_before_dependents() -> None:
     )
     assert sql.index("CREATE TABLE IF NOT EXISTS documents") < sql.index(
         "CREATE TABLE IF NOT EXISTS document_chunks"
+    )
+    assert sql.index("CREATE TABLE IF NOT EXISTS document_chunks") < sql.index(
+        "CREATE TABLE IF NOT EXISTS rag_chunk_vectors"
     )
     assert sql.index("CREATE TABLE IF NOT EXISTS chat_sessions") < sql.index(
         "CREATE TABLE IF NOT EXISTS chat_messages"

@@ -125,6 +125,13 @@ if [[ "$create_venv" -eq 1 ]]; then
     "$python_bin" -m venv "$venv_path"
   fi
   python_bin="$venv_path/bin/python"
+  echo "Installing Zsper and local RAG runtime dependencies"
+  "$python_bin" -m pip install --upgrade \
+    --editable "$repo_root" \
+    "docling>=2.0" \
+    "numpy>=2.0" \
+    "rank-bm25>=0.2" \
+    "sentence-transformers>=3.0"
   wrapper="$venv_path/bin/zsper"
   {
     printf '%s\n' '#!/usr/bin/env bash'

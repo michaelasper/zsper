@@ -14,6 +14,20 @@ from zsper.rag import ProfileRagStore
 from zsper.rag.indexes import ProfileVectorIndex
 
 
+@pytest.fixture(autouse=True)
+def fake_embedding_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    from zsper.profiles import Profile
+    from zsper.rag.embeddings import DeterministicFakeEmbeddingProvider
+
+    def provider_for_profile(profile: Profile) -> DeterministicFakeEmbeddingProvider:
+        return DeterministicFakeEmbeddingProvider(model=profile.embedding_profile)
+
+    monkeypatch.setattr(
+        "zsper.brain.rag_commands.provider_for_profile",
+        provider_for_profile,
+    )
+
+
 def _init_profile(
     monkeypatch: pytest.MonkeyPatch,
     isolated_registry_path: Path,

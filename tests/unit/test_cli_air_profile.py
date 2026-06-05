@@ -1,7 +1,23 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from zsper.cli import app
+from zsper.profiles import Profile
+
+
+@pytest.fixture(autouse=True)
+def fake_embedding_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    from zsper.rag.embeddings import DeterministicFakeEmbeddingProvider
+
+    def provider_for_profile(profile: Profile) -> DeterministicFakeEmbeddingProvider:
+        return DeterministicFakeEmbeddingProvider(model=profile.embedding_profile)
+
+    monkeypatch.setattr(
+        "zsper.brain.rag_commands.provider_for_profile",
+        provider_for_profile,
+    )
 
 
 def test_cli_air_profile_init_show_list_and_doctor(

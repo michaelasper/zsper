@@ -1,5 +1,7 @@
+import builtins
 import hashlib
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -169,6 +171,146 @@ def test_vector_ids_are_stable_and_content_based(
     assert changed.vector_ids != first.vector_ids
 
 
+def test_default_provider_requires_sentence_transformers_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from zsper.rag.embeddings import EmbeddingError
+    from zsper.rag.embeddings import provider_for_profile
+
+    real_import = builtins.__import__
+
+    def guarded_import(
+        name: str,
+        globals: object | None = None,
+        locals: object | None = None,
+        fromlist: tuple[str, ...] = (),
+        level: int = 0,
+    ) -> object:
+        if name == "sentence_transformers" or name.startswith(
+            "sentence_transformers."
+        ):
+            raise ModuleNotFoundError("No module named 'sentence_transformers'")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    profile = default_profile(mode="work", root=tmp_path / "work")
+
+    with pytest.raises(EmbeddingError, match="uv sync --group rag"):
+        provider_for_profile(profile)
+
+
+def test_local_embedding_provider_batches_through_worker_contract() -> None:
+    from zsper.rag.embeddings import LocalEmbeddingProvider
+
+    class RecordingWorker:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, tuple[str, ...]]] = []
+
+        def embed_texts(
+            self,
+            model: str,
+            texts: Sequence[str],
+        ) -> tuple[tuple[float, ...], ...]:
+            batch = tuple(texts)
+            self.calls.append((model, batch))
+            return tuple((float(len(text)),) for text in batch)
+
+    worker = RecordingWorker()
+    provider = LocalEmbeddingProvider(
+        model="local-small-embedding",
+        worker=worker,
+        batch_size=2,
+    )
+
+    vectors = provider.embed_texts(["a", "bb", "ccc", "dddd", "eeeee"])
+
+    assert vectors == ((1.0,), (2.0,), (3.0,), (4.0,), (5.0,))
+    assert worker.calls == [
+        ("local-small-embedding", ("a", "bb")),
+        ("local-small-embedding", ("ccc", "dddd")),
+        ("local-small-embedding", ("eeeee",)),
+    ]
+
+
+def test_sentence_transformer_worker_reuses_loaded_model_per_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from zsper.rag.embeddings import LocalEmbeddingProvider
+
+    constructed_models: list[tuple[str, dict[str, object]]] = []
+    encoded_batches: list[tuple[str, ...]] = []
+
+    class FakeSentenceTransformer:
+        def __init__(self, model_name_or_path: str, **kwargs: object) -> None:
+            constructed_models.append((model_name_or_path, kwargs))
+
+        def encode(
+            self,
+            texts: Sequence[str],
+            **kwargs: object,
+        ) -> tuple[tuple[float, ...], ...]:
+            encoded_batches.append(tuple(texts))
+            return tuple((float(len(text)),) for text in texts)
+
+    monkeypatch.setattr(
+        "zsper.rag.embeddings._sentence_transformer_class",
+        lambda: FakeSentenceTransformer,
+        raising=False,
+    )
+    provider = LocalEmbeddingProvider(
+        model="local-small-embedding",
+        batch_size=2,
+    )
+
+    assert provider.embed_texts(["a", "bb", "ccc", "dddd"]) == (
+        (1.0,),
+        (2.0,),
+        (3.0,),
+        (4.0,),
+    )
+    assert encoded_batches == [("a", "bb"), ("ccc", "dddd")]
+    assert constructed_models == [
+        (
+            "sentence-transformers/all-MiniLM-L6-v2",
+            {"local_files_only": True, "trust_remote_code": False},
+        )
+    ]
+
+
+def test_default_provider_reuses_loaded_model_between_calls(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from zsper.rag.embeddings import provider_for_profile
+
+    constructed_models: list[str] = []
+
+    class FakeSentenceTransformer:
+        def __init__(self, model_name_or_path: str, **kwargs: object) -> None:
+            del kwargs
+            constructed_models.append(model_name_or_path)
+
+        def encode(
+            self,
+            texts: Sequence[str],
+            **kwargs: object,
+        ) -> tuple[tuple[float, ...], ...]:
+            return tuple((float(len(text)),) for text in texts)
+
+    monkeypatch.setattr(
+        "zsper.rag.embeddings._sentence_transformer_class",
+        lambda: FakeSentenceTransformer,
+        raising=False,
+    )
+    profile = default_profile(mode="air-offline", root=tmp_path / "air")
+
+    provider_for_profile(profile).embed_texts(["first"])
+    provider_for_profile(profile).embed_texts(["second"])
+
+    assert constructed_models == ["sentence-transformers/all-MiniLM-L6-v2"]
+
+
 def test_air_offline_default_provider_uses_local_small_embedding_without_network(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -184,6 +326,27 @@ def test_air_offline_default_provider_uses_local_small_embedding_without_network
 
     monkeypatch.setattr("socket.create_connection", forbidden_network_call)
     monkeypatch.setattr("urllib.request.urlopen", forbidden_network_call)
+
+    constructed_models: list[tuple[str, dict[str, object]]] = []
+
+    class FakeSentenceTransformer:
+        def __init__(self, model_name_or_path: str, **kwargs: object) -> None:
+            constructed_models.append((model_name_or_path, kwargs))
+
+        def encode(
+            self,
+            texts: Sequence[str],
+            **kwargs: object,
+        ) -> tuple[tuple[float, ...], ...]:
+            assert kwargs["show_progress_bar"] is False
+            assert kwargs["normalize_embeddings"] is True
+            return tuple((float(index), float(len(text))) for index, text in enumerate(texts))
+
+    monkeypatch.setattr(
+        "zsper.rag.embeddings._sentence_transformer_class",
+        lambda: FakeSentenceTransformer,
+        raising=False,
+    )
     profile = initialize_profile(
         mode="air-offline",
         root=tmp_path / "air",
@@ -202,6 +365,12 @@ def test_air_offline_default_provider_uses_local_small_embedding_without_network
     assert store.list_chunks(profile, document.id)[0].embedding_model == (
         "local-small-embedding"
     )
+    assert constructed_models == [
+        (
+            "sentence-transformers/all-MiniLM-L6-v2",
+            {"local_files_only": True, "trust_remote_code": False},
+        )
+    ]
     assert calls == []
 
 

@@ -16,6 +16,10 @@ RUN pip install --no-cache-dir \
     "pydantic>=2.8" \
     "psycopg[binary]>=3.2" \
     "redis>=5.0" \
+    "docling>=2.0" \
+    "numpy>=2.0" \
+    "rank-bm25>=0.2" \
+    "sentence-transformers>=3.0" \
     "uvicorn[standard]>=0.30"
 
 WORKDIR /app/services/brain-api

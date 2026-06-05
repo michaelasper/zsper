@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import os
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 from urllib.parse import urlparse
 
@@ -22,6 +24,11 @@ SUPPORTED_LOCAL_EMBEDDING_PROFILES = frozenset(
         "local-small-embedding",
     }
 )
+DEFAULT_LOCAL_EMBEDDING_MODEL_REFS = {
+    "local-bge-small-en-v1.5": "BAAI/bge-small-en-v1.5",
+    "local-small-embedding": "sentence-transformers/all-MiniLM-L6-v2",
+}
+DEFAULT_EMBEDDING_BATCH_SIZE = 32
 
 
 class EmbeddingError(ValueError):
@@ -37,24 +44,102 @@ class EmbeddingProvider(Protocol):
         """Return one embedding vector for each input text."""
 
 
+class EmbeddingWorker(Protocol):
+    """Worker interface for concrete local embedding runtimes."""
+
+    def embed_texts(
+        self,
+        model: str,
+        texts: Sequence[str],
+    ) -> Sequence[Sequence[float]]:
+        """Return vectors for one bounded batch of text."""
+
+
 @dataclass(frozen=True)
 class LocalEmbeddingProvider:
-    """Deterministic local provider used when no external model process is injected."""
+    """Profile-scoped local provider backed by a real local embedding worker."""
 
     model: str
-    dimensions: int = DEFAULT_EMBEDDING_DIMENSIONS
+    worker: EmbeddingWorker | None = None
+    batch_size: int = DEFAULT_EMBEDDING_BATCH_SIZE
 
     def __post_init__(self) -> None:
         _validate_local_model(self.model)
-        if not isinstance(self.dimensions, int) or isinstance(self.dimensions, bool):
-            raise EmbeddingError("embedding dimensions must be a positive integer")
-        if self.dimensions <= 0:
-            raise EmbeddingError("embedding dimensions must be a positive integer")
+        if not isinstance(self.batch_size, int) or isinstance(self.batch_size, bool):
+            raise EmbeddingError("embedding batch_size must be a positive integer")
+        if self.batch_size <= 0:
+            raise EmbeddingError("embedding batch_size must be a positive integer")
+        if self.worker is None:
+            object.__setattr__(self, "worker", SentenceTransformerEmbeddingWorker())
 
     def embed_texts(self, texts: Sequence[str]) -> tuple[tuple[float, ...], ...]:
-        return tuple(
-            _deterministic_vector(self.model, text, self.dimensions) for text in texts
+        worker = self.worker
+        if worker is None:
+            raise EmbeddingError("embedding provider worker is not configured")
+
+        vectors: list[tuple[float, ...]] = []
+        for batch in _batched(tuple(texts), self.batch_size):
+            batch_vectors = _coerce_vectors(worker.embed_texts(self.model, batch), len(batch))
+            vectors.extend(batch_vectors)
+        return tuple(vectors)
+
+
+@dataclass(frozen=True)
+class SentenceTransformerEmbeddingWorker:
+    """Local SentenceTransformers worker with network downloads disabled."""
+
+    model_refs: Mapping[str, str] | None = None
+    device: str | None = None
+    _loaded_models: dict[tuple[str, str, str | None, type[Any]], Any] = field(
+        default_factory=dict,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+
+    def ensure_runtime_available(self) -> None:
+        _sentence_transformer_class()
+
+    def embed_texts(
+        self,
+        model: str,
+        texts: Sequence[str],
+    ) -> tuple[tuple[float, ...], ...]:
+        _validate_local_model(model)
+        model_ref = _model_ref_for_profile(model, self.model_refs)
+        sentence_transformer = self._loaded_model(model, model_ref)
+        try:
+            raw_vectors = sentence_transformer.encode(
+                list(texts),
+                batch_size=max(1, len(texts)),
+                show_progress_bar=False,
+                normalize_embeddings=True,
+                convert_to_numpy=False,
+            )
+        except Exception as exc:
+            raise EmbeddingError(
+                f"local embedding generation failed for embedding_profile {model!r}: {exc}"
+            ) from exc
+        return _coerce_vectors(raw_vectors, len(texts))
+
+    def _loaded_model(self, profile_model: str, model_ref: str) -> Any:
+        sentence_transformer_class = _sentence_transformer_class()
+        cache_key = (
+            profile_model,
+            model_ref,
+            self.device,
+            sentence_transformer_class,
         )
+        model = self._loaded_models.get(cache_key)
+        if model is None:
+            model = _load_sentence_transformer_model(
+                profile_model,
+                model_ref,
+                self.device,
+                sentence_transformer_class,
+            )
+            self._loaded_models[cache_key] = model
+        return model
 
 
 @dataclass(frozen=True)
@@ -96,6 +181,9 @@ class EmbeddingResult:
     records: tuple[EmbeddingRecord, ...]
 
 
+_DEFAULT_SENTENCE_TRANSFORMER_WORKER = SentenceTransformerEmbeddingWorker()
+
+
 def provider_for_profile(
     profile: Profile,
     *,
@@ -105,7 +193,18 @@ def provider_for_profile(
 
     if settings is not None:
         validate_embedding_settings(profile, settings)
-    return LocalEmbeddingProvider(model=profile.embedding_profile)
+    model_refs = _embedding_model_refs_from_settings(settings)
+    worker = (
+        _DEFAULT_SENTENCE_TRANSFORMER_WORKER
+        if model_refs is None
+        else SentenceTransformerEmbeddingWorker(model_refs=model_refs)
+    )
+    worker.ensure_runtime_available()
+    return LocalEmbeddingProvider(
+        model=profile.embedding_profile,
+        worker=worker,
+        batch_size=_embedding_batch_size_from_settings(settings),
+    )
 
 
 def validate_embedding_settings(profile: Profile, settings: Mapping[str, Any]) -> None:
@@ -212,28 +311,132 @@ def _embed_texts(
     provider: EmbeddingProvider,
     texts: Sequence[str],
 ) -> tuple[tuple[float, ...], ...]:
-    vectors = tuple(tuple(float(value) for value in vector) for vector in provider.embed_texts(texts))
-    if len(vectors) != len(texts):
+    return _coerce_vectors(provider.embed_texts(texts), len(texts))
+
+
+def _coerce_vectors(
+    vectors: Sequence[Sequence[float]],
+    expected_count: int,
+) -> tuple[tuple[float, ...], ...]:
+    coerced = tuple(tuple(float(value) for value in vector) for vector in vectors)
+    if len(coerced) != expected_count:
         raise EmbeddingError("embedding provider returned the wrong vector count")
-    return vectors
+
+    dimensions: int | None = None
+    for vector in coerced:
+        if not vector:
+            raise EmbeddingError("embedding provider returned an empty vector")
+        if any(not math.isfinite(value) for value in vector):
+            raise EmbeddingError("embedding provider returned a non-finite vector value")
+        if dimensions is None:
+            dimensions = len(vector)
+        elif len(vector) != dimensions:
+            raise EmbeddingError("embedding provider returned inconsistent dimensions")
+    return coerced
 
 
-def _deterministic_vector(model: str, text: str, dimensions: int) -> tuple[float, ...]:
-    values: list[float] = []
-    counter = 0
-    text_bytes = text.encode("utf-8")
-    model_bytes = model.encode("utf-8")
-    while len(values) < dimensions:
-        block = hashlib.sha256(
-            model_bytes + b"\0" + str(counter).encode("ascii") + b"\0" + text_bytes
-        ).digest()
-        for offset in range(0, len(block), 4):
-            integer = int.from_bytes(block[offset : offset + 4], "big")
-            values.append((integer / 0xFFFFFFFF) * 2.0 - 1.0)
-            if len(values) == dimensions:
-                break
-        counter += 1
-    return tuple(values)
+def _batched(
+    values: Sequence[str],
+    batch_size: int,
+) -> tuple[tuple[str, ...], ...]:
+    return tuple(
+        tuple(values[index : index + batch_size])
+        for index in range(0, len(values), batch_size)
+    )
+
+
+def _sentence_transformer_class() -> type[Any]:
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ModuleNotFoundError as exc:
+        raise EmbeddingError(
+            "local embedding runtime unavailable: install SentenceTransformers with "
+            "`uv sync --group rag` and cache the embedding model locally before "
+            "running default RAG embeddings"
+        ) from exc
+    return SentenceTransformer
+
+
+def _load_sentence_transformer_model(
+    profile_model: str,
+    model_ref: str,
+    device: str | None,
+    sentence_transformer_class: type[Any],
+) -> Any:
+    kwargs: dict[str, object] = {
+        "local_files_only": True,
+        "trust_remote_code": False,
+    }
+    if device:
+        kwargs["device"] = device
+    try:
+        return sentence_transformer_class(model_ref, **kwargs)
+    except Exception as exc:
+        env_name = _embedding_model_env_name(profile_model)
+        raise EmbeddingError(
+            "local embedding model unavailable for embedding_profile "
+            f"{profile_model!r} using {model_ref!r}: cache the model locally or set "
+            f"{env_name} to a local model directory; downloads are disabled"
+        ) from exc
+
+
+def _model_ref_for_profile(
+    model: str,
+    model_refs: Mapping[str, str] | None,
+) -> str:
+    configured_ref = None if model_refs is None else model_refs.get(model)
+    env_ref = os.environ.get(_embedding_model_env_name(model))
+    global_env_ref = os.environ.get("ZSPER_EMBEDDING_MODEL_PATH")
+    model_ref = env_ref or configured_ref or global_env_ref
+    if model_ref is None:
+        model_ref = DEFAULT_LOCAL_EMBEDDING_MODEL_REFS[model]
+    if _is_http_url(model_ref):
+        raise EmbeddingError(
+            "embedding model reference must be a local path or local cache id, not a URL"
+        )
+    return model_ref
+
+
+def _embedding_model_refs_from_settings(
+    settings: Mapping[str, Any] | None,
+) -> Mapping[str, str] | None:
+    if settings is None:
+        return None
+    configured = settings.get("embedding_models")
+    if not isinstance(configured, Mapping):
+        return None
+
+    refs: dict[str, str] = {}
+    for model, raw_value in configured.items():
+        if not isinstance(model, str):
+            continue
+        _validate_local_model(model)
+        if isinstance(raw_value, str):
+            refs[model] = raw_value
+            continue
+        if isinstance(raw_value, Mapping):
+            raw_ref = raw_value.get("model_path") or raw_value.get("model_ref")
+            if isinstance(raw_ref, str):
+                refs[model] = raw_ref
+    return refs
+
+
+def _embedding_batch_size_from_settings(settings: Mapping[str, Any] | None) -> int:
+    if settings is None:
+        return DEFAULT_EMBEDDING_BATCH_SIZE
+    raw_batch_size = settings.get("embedding_batch_size")
+    if raw_batch_size is None:
+        return DEFAULT_EMBEDDING_BATCH_SIZE
+    if not isinstance(raw_batch_size, int) or isinstance(raw_batch_size, bool):
+        raise EmbeddingError("embedding_batch_size must be a positive integer")
+    if raw_batch_size <= 0:
+        raise EmbeddingError("embedding_batch_size must be a positive integer")
+    return raw_batch_size
+
+
+def _embedding_model_env_name(model: str) -> str:
+    suffix = "".join(character if character.isalnum() else "_" for character in model)
+    return f"ZSPER_EMBEDDING_MODEL_PATH_{suffix.upper()}"
 
 
 def _iter_setting_urls(value: Any) -> tuple[str, ...]:

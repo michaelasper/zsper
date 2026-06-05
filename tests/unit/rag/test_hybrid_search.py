@@ -17,6 +17,24 @@ from zsper.rag.models import CitationAnchor, Document, DocumentChunk
 from zsper.rag.store import ProfileRagStore
 
 
+@pytest.fixture(autouse=True)
+def fake_cli_embedding_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeQueryEmbeddingProvider:
+        def __init__(self, model: str) -> None:
+            self.model = model
+
+        def embed_texts(self, texts: Sequence[str]) -> tuple[tuple[float, ...], ...]:
+            return tuple((1.0,) + ((0.0,) * 383) for _ in texts)
+
+    def provider_for_profile(profile: Profile) -> FakeQueryEmbeddingProvider:
+        return FakeQueryEmbeddingProvider(model=profile.embedding_profile)
+
+    monkeypatch.setattr(
+        "zsper.brain.rag_commands.provider_for_profile",
+        provider_for_profile,
+    )
+
+
 SERVICE_ROOT = Path(__file__).resolve().parents[3] / "services" / "brain-api"
 if str(SERVICE_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVICE_ROOT))
