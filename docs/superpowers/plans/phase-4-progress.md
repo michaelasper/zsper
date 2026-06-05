@@ -24,7 +24,7 @@ Milestone: M4 Documents, RAG, And Citations
 | RAG-014 | Documents And Citations API | RAG-008, BRAIN-005 | Complete | `pytest tests/unit/brain/test_documents_citations_api.py -q` -> 4 passed | PASS | `feat(rag): add vector index and documents api` |
 | RAG-015 | Brain Ingest/Search/Answer CLI | RAG-012, RAG-013, RAG-014, FND-004 | Complete | `pytest tests/unit/brain/test_rag_cli.py -q` -> 7 passed | PASS | `feat(cli): add brain rag commands` |
 | RAG-016 | Citation Inspection UI | BRAIN-008, RAG-013, RAG-014 | Complete | `npm --prefix apps/brain-web test` -> 9 passed | PASS | `feat(brain-web): add citation inspection` |
-| GATE-002 | RAG Acceptance Suite | RAG-015, RAG-016 | Pending | Pending | Pending | Pending |
+| GATE-002 | RAG Acceptance Suite | RAG-015, RAG-016 | Complete | `pytest tests/integration/rag/test_rag_acceptance.py -q` -> 2 passed | PASS | `test(rag): add rag acceptance suite` |
 
 ## Orchestration Notes
 
@@ -135,6 +135,13 @@ Milestone: M4 Documents, RAG, And Citations
   were fixed. Local verification: `pytest tests/unit/brain/test_rag_cli.py -q`
   -> 7 passed; `npm --prefix apps/brain-web test` -> 9 passed; standalone
   `npm --prefix apps/brain-web run build` -> passed.
+- 2026-06-05: Implemented and reviewed `GATE-002`. The acceptance suite covers
+  Markdown, PDF via a mocked local Docling converter, mocked web capture, repo
+  docs as checked-in source documentation, raw and parsed artifacts, chunks,
+  citation anchors, embedding metadata, BM25 exact search, dense semantic
+  search, structured answer citations, and air/offline file-only plus hosted
+  dependency rejection. Local verification:
+  `pytest tests/integration/rag/test_rag_acceptance.py -q` -> 2 passed.
 
 ## Acceptance Gates
 
