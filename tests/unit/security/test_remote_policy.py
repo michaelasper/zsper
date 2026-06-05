@@ -4,11 +4,11 @@ from zsper.security.remote_policy import RemotePolicyError, check_remote_policy
 
 
 @pytest.mark.parametrize(
-    ("mode", "policy"),
+        ("mode", "policy"),
     [
         ("work", "disabled"),
         ("personal", "tailscale-serve-only"),
-        ("air-offline", "disabled"),
+        ("air", "disabled"),
     ],
 )
 def test_allowed_remote_policies(mode: str, policy: str) -> None:
@@ -18,11 +18,11 @@ def test_allowed_remote_policies(mode: str, policy: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("mode", "policy"),
+        ("mode", "policy"),
     [
         ("work", "tailscale-serve-only"),
         ("personal", "tailscale-funnel"),
-        ("air-offline", "tailscale-serve-only"),
+        ("air", "tailscale-serve-only"),
     ],
 )
 def test_forbidden_remote_policies(mode: str, policy: str) -> None:

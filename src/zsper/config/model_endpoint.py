@@ -81,7 +81,7 @@ def endpoints_for_profile(
     *,
     include_fallback: bool = False,
 ) -> list[ModelEndpoint]:
-    if profile.mode == "air-offline":
+    if profile.mode == "air":
         return [ModelEndpoint.air(model_id=profile.model_profile)]
 
     endpoints = [ModelEndpoint.primary(model_id=profile.model_profile)]

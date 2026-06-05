@@ -1,4 +1,4 @@
-# How To Prepare A Portable Profile
+# How To Use Offline State
 
 Source references:
 
@@ -9,9 +9,10 @@ Source references:
 - [Profile modes](../architecture/profile-modes.md)
   (`docs/architecture/profile-modes.md`)
 
-Use this guide when you want a Zsper profile for laptop, travel, field, or
-lower-compute local work. The profile uses `air-offline` mode, but its name can
-be any clear workspace name such as `portable`, `travel`, or `field`.
+Use this guide when a profile needs to keep working without hosted model,
+search, extraction, or model-download calls. Offline is a network policy state,
+not a profile mode. `work`, `personal`, and `air` profiles can all run in
+offline state.
 
 ## Install The CLI
 
@@ -22,16 +23,28 @@ does not create a profile or choose a default.
 curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh | bash
 ```
 
-Create and select a portable profile:
+Create and select a low-compute air profile:
 
 ```bash
 zsper profile init \
-  --mode air-offline \
+  --mode air \
   --name portable \
   --root "$HOME/.local/share/zsper/profiles/portable"
 zsper profile use portable
 zsper profile doctor
 ```
+
+To start that profile in offline state, add `--network-policy offline`:
+
+```bash
+zsper profile init \
+  --mode air \
+  --network-policy offline \
+  --name portable \
+  --root "$HOME/.local/share/zsper/profiles/portable"
+```
+
+The same flag works for `work` and `personal` profiles.
 
 ## Prepare From A Source Checkout
 
@@ -45,7 +58,8 @@ create or reuse a profile, ingest a readiness note, and verify local search:
 The helper:
 
 - creates `.venv` and a `.venv/bin/zsper` wrapper unless `--no-venv` is used;
-- initialises the requested `air-offline` profile when it is not registered;
+- initialises the requested `air` profile in offline state when it is not
+  registered;
 - reuses the requested profile when it already exists;
 - writes `brain/notes/portable-readiness.md` inside the profile root;
 - ingests that readiness note through `zsper brain ingest`;
@@ -101,7 +115,7 @@ Search local profile content:
 zsper brain search --profile portable flight
 ```
 
-URL ingestion is rejected while `air-offline` mode is active:
+URL ingestion is rejected while offline state is active:
 
 ```bash
 zsper brain ingest --profile portable https://example.com/doc.md
@@ -115,7 +129,8 @@ laptop, then create and select the portable profile explicitly:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh | bash
 zsper profile init \
-  --mode air-offline \
+  --mode air \
+  --network-policy offline \
   --name portable \
   --root "$HOME/.local/share/zsper/profiles/portable"
 zsper profile use portable

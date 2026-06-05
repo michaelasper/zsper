@@ -15,7 +15,7 @@ PLATFORM_OVERVIEW = REPO_ROOT / "docs" / "architecture" / "platform-overview.md"
 PROFILE_MODES = REPO_ROOT / "docs" / "architecture" / "profile-modes.md"
 LOCAL_DEVELOPMENT = REPO_ROOT / "docs" / "runbooks" / "local-development.md"
 TESTING = REPO_ROOT / "docs" / "runbooks" / "testing.md"
-AIR_OFFLINE = REPO_ROOT / "docs" / "runbooks" / "air-offline.md"
+OFFLINE_STATE = REPO_ROOT / "docs" / "runbooks" / "offline-state.md"
 README = REPO_ROOT / "README.md"
 
 REQUIRED_DOCS = (
@@ -25,7 +25,7 @@ REQUIRED_DOCS = (
     PROFILE_MODES,
     LOCAL_DEVELOPMENT,
     TESTING,
-    AIR_OFFLINE,
+    OFFLINE_STATE,
 )
 REQUIRED_LINKS = (
     "docs/zsper-local-ai-platform-ultimate-spec.md",
@@ -77,7 +77,7 @@ def test_new_docs_link_to_source_spec_and_dag() -> None:
         PROFILE_MODES,
         LOCAL_DEVELOPMENT,
         TESTING,
-        AIR_OFFLINE,
+        OFFLINE_STATE,
     ):
         text = read_doc(path)
         resolved_targets = linked_local_targets(path)
@@ -115,19 +115,20 @@ def test_testing_runbook_lists_exact_commands_with_purpose() -> None:
         assert purpose in testing
 
 
-def test_air_offline_docs_explain_setup_script_and_profile_flow() -> None:
+def test_offline_state_docs_explain_setup_script_and_profile_flow() -> None:
     readme = read_doc(README)
-    air_offline = read_doc(AIR_OFFLINE)
+    offline_state = read_doc(OFFLINE_STATE)
     profile_modes = read_doc(PROFILE_MODES)
 
     assert "./setup.sh --air --name portable" in readme
     assert "docs/architecture/profile-modes.md" in readme
-    assert "docs/runbooks/air-offline.md" in readme
-    assert "./setup.sh --air --name portable" in air_offline
-    assert "zsper brain ingest --profile portable" in air_offline
-    assert "zsper brain search --profile portable" in air_offline
-    assert "ZSPER_AIR_ROOT" in air_offline
+    assert "docs/runbooks/offline-state.md" in readme
+    assert "./setup.sh --air --name portable" in offline_state
+    assert "zsper brain ingest --profile portable" in offline_state
+    assert "zsper brain search --profile portable" in offline_state
+    assert "ZSPER_AIR_ROOT" in offline_state
     assert "The mode is not the profile name" in profile_modes
+    assert "Offline is a network-policy state, not a mode" in profile_modes
     assert "`work`" in profile_modes
     assert "`personal`" in profile_modes
-    assert "`air-offline`" in profile_modes
+    assert "`air`" in profile_modes

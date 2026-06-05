@@ -8,16 +8,19 @@ before the full Brain/RAG/orchestrator milestones are complete.
 
 ## Goal
 
-Make an `air-offline` profile useful while Gemma 4 12B is still downloading
-elsewhere: initialise an isolated portable profile, inspect it, run doctor
-checks, ingest local files and repo docs, search those local sources, and reject
-networked ingest paths when the profile is configured for disconnected use.
+Make an air profile in offline state useful while Gemma 4 12B is still
+downloading elsewhere: initialise an isolated portable profile, inspect it, run
+doctor checks, ingest local files and repo docs, search those local sources, and
+reject networked ingest paths when the profile is configured for disconnected
+use.
 
 ## Implemented Out Of Order
 
-- `profile init/show/list/doctor` for work, personal, and `air-offline` profiles.
-- `air-offline` defaults: Gemma 4 12B code model metadata, disabled remote access,
-  offline network policy, SQLite-local storage mode, and local-small embeddings.
+- `profile init/show/list/doctor` for work, personal, and air profiles.
+- Air defaults: Gemma 4 12B code model metadata, disabled remote access,
+  local-first network policy, SQLite-local storage mode, and local-small
+  embeddings.
+- Offline state can be selected for work, personal, and air profiles.
 - Profile-local root layout, `profile.json`, registry, and `agent-runs/runs.jsonl`.
 - Offline network policy checks that block URLs, SearXNG, hosted model/search/
   extraction APIs, plugin network access, and model artifact downloads.
@@ -32,19 +35,19 @@ networked ingest paths when the profile is configured for disconnected use.
   dense vector indexing, hybrid search, and `brain answer` citation objects.
 - `./setup.sh --air` out-of-order setup path:
   - creates a project `.venv` wrapper unless `--no-venv` is used;
-  - creates or reuses a portable `air-offline` profile;
+  - creates or reuses a portable air profile in offline state;
   - writes and ingests a profile-local readiness note;
   - verifies `profile doctor` and local search before reporting readiness.
 - Portable profile documentation:
   - README quick start for `./setup.sh --air`;
-  - how-to guide at `docs/runbooks/air-offline.md`;
+  - how-to guide at `docs/runbooks/offline-state.md`;
   - testing runbook coverage for the setup script.
 
 ## Deferred Back To The DAG
 
 - Notes/tasks/memory records and UI views.
 - Mocked local model endpoint startup and agent-run launch.
-- Full integration test at `tests/integration/offline/test_air_offline_flows.py`.
+- Full integration test at `tests/integration/offline/test_offline_flows.py`.
 - Portable local model adapter startup for the laptop runtime.
 
 ## Current Verification

@@ -41,9 +41,9 @@ def check_remote_policy(mode: str, remote_access_policy: str) -> RemoteDecision:
             return _allow("personal remote access policy allowed")
         return _deny("personal remote access may use Tailscale Serve only")
 
-    if mode == "air-offline":
+    if mode == "air":
         if remote_access_policy == "disabled":
-            return _allow("air/offline remote access disabled")
-        return _deny("air-offline remote access is disabled")
+            return _allow("air remote access disabled")
+        return _deny("air remote access is disabled")
 
     return _deny(f"unknown profile mode: {mode}")

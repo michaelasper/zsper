@@ -201,7 +201,7 @@ def test_sqlite_store_persists_document_chunks_citations_and_embedding_metadata(
     isolated_registry_path: Path,
 ) -> None:
     profile = initialize_profile(
-        mode="air-offline",
+        mode="air",
         root=tmp_path / "air",
         registry_path=isolated_registry_path,
     )

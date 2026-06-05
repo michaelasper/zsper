@@ -32,8 +32,9 @@ storage where the spec calls for them.
 
 ## Core Architecture
 
-- Profiles are the isolation boundary. Work, personal, and portable
-  (`air-offline`) profiles share code but never share state.
+- Profiles are the isolation boundary. Work, personal, and air profiles share
+  code but never share state. Offline is a network-policy state any profile can
+  enter.
 - Mutations are mirrored to append-only JSONL ledgers for auditability,
   recovery, and offline troubleshooting.
 - Brain retrieval is hybrid BM25 + dense vector search. BM25 protects exact

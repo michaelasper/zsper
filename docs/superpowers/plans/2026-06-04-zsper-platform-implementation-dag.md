@@ -42,13 +42,13 @@ Communication is through repository files, tests, and ledgers only. Agents must 
 | Milestone | Goal | Exit Gate |
 | --- | --- | --- |
 | M0 Foundation | Repo baseline, Python package, test runner, empty CLI, architecture docs. | `pytest --collect-only` and CLI help tests pass. |
-| M1 Profiles And Security Core | Work, personal, and `air-offline` profiles, registry, resolver, directory layout, redaction, network and remote policy primitives. | Work, personal, and `air-offline` profile tests pass and policy tests reject invalid states. |
+| M1 Profiles And Security Core | Work, personal, and air profiles, registry, resolver, directory layout, redaction, network and remote policy primitives. | Work, personal, and air profile tests pass and policy tests reject invalid states. |
 | M2 Code Adapters | Model endpoint records, external `llm-server` contract, profile-local Zed/OpenCode/Pi/Hermes adapter generation. | Adapter golden tests pass and no product code imports `llm-server` internals. |
 | M3 Brain Platform | Profile-specific Compose, Postgres/pgvector schema, Redis, ledgers, FastAPI skeleton, health/status/settings, Next.js shell. | `zsper brain status` reports profile-scoped service state with model serving excluded from Compose. |
 | M4 Documents And RAG | Asset capture, parsing, Docling, web capture, chunking, citations, embeddings, BM25, dense vectors, hybrid search, grounded answers. | Markdown/PDF/web/repo fixtures ingest and answer with exact chunk citation objects. |
 | M5 Records And Workspace | Notes, tasks, memories, research inbox, chat, web views, canonical ledgers. | Notes/tasks/memories/research/chat are profile-local and visible in the web shell. |
 | M6 Orchestrator And Agent Runs | Task/run service, tmux, harness adapters, event collector, artifacts, summaries, Agent Runs UI. | A Pi run launches in tmux, streams events, attaches artifacts, completes, and can be resumed. |
-| M7 Offline And Security Gates | No-network air/offline mode, hosted-call detection, remote policy checks, secret redaction, global config patch safeguards. | Forbidden hosted integrations, Funnel, cross-profile reads, and secret leaks fail tests. |
+| M7 Offline And Security Gates | Offline network-policy state, hosted-call detection, remote policy checks, secret redaction, global config patch safeguards. | Forbidden hosted integrations, Funnel, cross-profile reads, and secret leaks fail tests. |
 | M8 First Daily-Use Readiness | Whole-product smoke path for profiles, code, Brain, RAG, notes/tasks/memories, orchestrator, offline, and security. | `REL-004` passes and the runbook documents daily startup/shutdown/recovery. |
 
 ## DAG Overview
@@ -369,7 +369,7 @@ Create and evolve these paths as tasks require them:
 
 **Requirements:**
 - Fields: `schema_version`, `name`, `mode`, `root`, `model_profile`, `long_context_fallback`, `embedding_profile`, `storage_backend`, `remote_access_policy`, `network_policy`, `database_name`, `created_at`, `updated_at`.
-- Modes: `work`, `personal`, `air-offline`.
+- Modes: `work`, `personal`, `air`.
 - Storage backends: `postgres-pgvector`, `sqlite-local`.
 - Remote access policies: `disabled`, `tailscale-serve-only`.
 - Network policies: `local-first`, `offline`.
@@ -395,14 +395,15 @@ Create and evolve these paths as tasks require them:
 - Create: `src/zsper/profiles/defaults.py`
 - Test: `tests/unit/profiles/test_defaults.py`
 
-**Goal:** Encode work, personal, and air/offline defaults from the spec.
+**Goal:** Encode work, personal, and air defaults from the spec.
 
 **Requirements:**
 - Work: `remote_access_policy=disabled`, `network_policy=local-first`, `model_profile=zsper-qwen35-oq6-fp16-mtp-omlx-128k`, `long_context_fallback=None`, `storage_backend=postgres-pgvector`, `embedding_profile=local-bge-small-en-v1.5`.
 - Personal: `remote_access_policy=tailscale-serve-only`, `network_policy=local-first`, primary model, `long_context_fallback=zsper-qwen35-oq6-omlx-256k`, `storage_backend=postgres-pgvector`, `embedding_profile=local-bge-small-en-v1.5`.
-- Air/offline: `remote_access_policy=disabled`, `network_policy=offline`, `model_profile=zsper-air-gemma4-12b-it-6bit-128k`, `long_context_fallback=None`, `storage_backend=sqlite-local` for first offline iteration, `embedding_profile=local-small-embedding`.
+- Air: `remote_access_policy=disabled`, `network_policy=local-first`, `model_profile=zsper-air-gemma4-12b-it-6bit-128k`, `long_context_fallback=None`, `storage_backend=sqlite-local`, `embedding_profile=local-small-embedding`.
+- Every mode accepts `network_policy=offline` as degraded state.
 - Reject `mode=work` with personal remote defaults.
-- Reject `mode=air-offline` with `network_policy=local-first`.
+- Reject air profiles that enable remote access.
 
 **Acceptance Checks:**
 - Defaults match the spec text exactly.
@@ -541,7 +542,7 @@ Create and evolve these paths as tasks require them:
 - `offline` blocks URLs, SearXNG, hosted integrations, hosted model APIs, hosted search APIs, hosted extraction APIs, and model artifact downloads.
 
 **Acceptance Checks:**
-- URL ingestion and SearXNG search fail for air/offline profiles.
+- URL ingestion and SearXNG search fail for any profile in offline state.
 - Hosted model/search/extraction hosts fail by default.
 
 **Verification:**
@@ -565,7 +566,7 @@ Create and evolve these paths as tasks require them:
 - Work remote access defaults to disabled.
 - Personal remote access may use Tailscale Serve only.
 - Tailscale Funnel is forbidden for all profile modes.
-- Air/offline remote access is disabled.
+- Air remote access is disabled.
 
 **Acceptance Checks:**
 - Any policy containing Funnel is rejected.
@@ -624,7 +625,7 @@ Create and evolve these paths as tasks require them:
 - Verify no forbidden hosted integration is configured in core profile settings.
 
 **Acceptance Checks:**
-- Healthy work, personal, and `air-offline` profiles pass.
+- Healthy work, personal, and air profiles pass.
 - Missing canonical directories, invalid policy, and forbidden hosted config fail with actionable messages.
 
 **Verification:**
@@ -646,7 +647,7 @@ Create and evolve these paths as tasks require them:
 **Goal:** Implement `zsper profile init/list/show/doctor`.
 
 **Requirements:**
-- `profile init --mode work|personal|air-offline --root <path>` creates the profile root, writes `profile.json`, and registers it.
+- `profile init --mode work|personal|air --root <path>` creates the profile root, writes `profile.json`, and registers it.
 - `profile list` reads the registry.
 - `profile show --profile <name-or-root>` prints profile metadata without secrets.
 - `profile doctor --profile <name-or-root>` runs doctor checks.
@@ -676,7 +677,7 @@ Create and evolve these paths as tasks require them:
 **Requirements:**
 - Primary endpoint: provider `zsper-code`, base URL `http://127.0.0.1:9127/v1`, model `zsper-qwen35-oq6-fp16-mtp-omlx-128k`, context window `131072`, output limit `4096`, tool support `true`, health path `/models`.
 - Personal fallback endpoint: provider `zsper-code-long`, model `zsper-qwen35-oq6-omlx-256k`, context window `262144`.
-- Air/offline endpoint: provider `zsper-air-code`, model `zsper-air-gemma4-12b-it-6bit-128k`, context window `131072`.
+- Air endpoint: provider `zsper-air-code`, model `zsper-air-gemma4-12b-it-6bit-128k`, context window `131072`.
 
 **Acceptance Checks:**
 - Endpoint records serialize to JSON-compatible dictionaries.
@@ -1226,7 +1227,7 @@ Create and evolve these paths as tasks require them:
 **Requirements:**
 - Store profile id on every document.
 - Support Postgres/pgvector for work/personal.
-- Support SQLite-compatible logical schema for air/offline file-only iteration.
+- Support SQLite-compatible logical schema for offline file-only iteration.
 - Append document mutations to `documents.jsonl`.
 
 **Acceptance Checks:**
@@ -1285,7 +1286,7 @@ Create and evolve these paths as tasks require them:
 - Local-first permits explicit web capture and local SearXNG.
 
 **Acceptance Checks:**
-- Air/offline URL ingest fails with a clear policy error.
+- Offline-state URL ingest fails with a clear policy error.
 - No forbidden HTTP call occurs in policy tests.
 
 **Verification:**
@@ -1365,7 +1366,7 @@ Create and evolve these paths as tasks require them:
 **Requirements:**
 - Web capture requires local-first profile and explicit user action.
 - Preserve URL, capture timestamp, content hash, title, and extraction status.
-- Air/offline rejects web capture before any network call.
+- Offline state rejects web capture before any network call.
 - Captured webpages become raw assets only after explicit ingest.
 
 **Acceptance Checks:**
@@ -1447,7 +1448,7 @@ Create and evolve these paths as tasks require them:
 - Use profile `embedding_profile`.
 - Never call hosted embedding APIs.
 - Store `embedding_model` and `embedding_vector_id`.
-- Support `local-small-embedding` for air/offline mode.
+- Support `local-small-embedding` for air mode.
 - Allow deterministic fake embeddings in unit tests.
 
 **Acceptance Checks:**
@@ -1501,7 +1502,7 @@ Create and evolve these paths as tasks require them:
 
 **Requirements:**
 - Use pgvector for work/personal profiles.
-- Provide SQLite-compatible abstraction for air/offline file-only iteration.
+- Provide SQLite-compatible abstraction for offline file-only iteration.
 - Store vectors with profile id, document id, chunk id, embedding model, and embedding vector id.
 
 **Acceptance Checks:**
@@ -1680,7 +1681,7 @@ Create and evolve these paths as tasks require them:
 - Assert BM25 exact results.
 - Assert dense semantic results.
 - Assert answers include exact citation objects.
-- Assert air/offline file-only retrieval works and URL ingestion fails.
+- Assert offline-state file-only retrieval works and URL ingestion fails.
 
 **Acceptance Checks:**
 - Full RAG acceptance path passes.
@@ -2309,12 +2310,12 @@ Create and evolve these paths as tasks require them:
 **Dependencies:** `OFF-001`, `RAG-015`, `REC-002`, `REC-003`, `ORCH-012`  
 **Owner:** Security/Release Agent  
 **Files:**
-- Create: `tests/integration/offline/test_air_offline_flows.py`
+- Create: `tests/integration/offline/test_offline_flows.py`
 
-**Goal:** Prove air/offline mode works with local files and no network.
+**Goal:** Prove offline state works with local files and no network.
 
 **Requirements:**
-- Initialize air/offline profile.
+- Initialize profiles in offline state.
 - Start code endpoint using local model artifact contract with mocked serving.
 - Create notes.
 - Create tasks.
@@ -2328,10 +2329,10 @@ Create and evolve these paths as tasks require them:
 - Hosted model/search/extraction calls are not made.
 
 **Verification:**
-- Run: `pytest tests/integration/offline/test_air_offline_flows.py -v`
+- Run: `pytest tests/integration/offline/test_offline_flows.py -v`
 - Expected: offline flow tests pass.
 
-**Suggested Commit:** `test(offline): add air offline product flows`
+**Suggested Commit:** `test(offline): add offline product flows`
 
 ### GATE-005: Security Policy Suite
 
@@ -2421,7 +2422,7 @@ Create and evolve these paths as tasks require them:
 - Run citation-grounded answer.
 - Create note, task, and memory event.
 - Launch a mocked or real Pi tmux run depending on environment.
-- Verify air/offline local-file flow.
+- Verify offline local-file flow.
 
 **Acceptance Checks:**
 - Script exits nonzero on any failed readiness step.
@@ -2441,7 +2442,7 @@ Create and evolve these paths as tasks require them:
 **Files:**
 - Create: `docs/runbooks/daily-use.md`
 - Create: `docs/runbooks/profile-recovery.md`
-- Create: `docs/runbooks/offline-mode.md`
+- Create: `docs/runbooks/offline-state.md`
 - Create: `docs/runbooks/security-checks.md`
 - Create: `docs/runbooks/agent-runs.md`
 - Test: `tests/unit/test_runbook_links.py`
@@ -2518,7 +2519,7 @@ Create and evolve these paths as tasks require them:
 - Notes, tasks, and memory events can be created and searched.
 - An agent task can launch through tmux, record events, and attach artifacts.
 - Work and personal isolation tests prove no shared state.
-- Air/offline mode works with local files and no network.
+- Offline state works with local files and no network.
 - Security tests prove forbidden hosted integrations are not called in core flows.
 
 **Acceptance Checks:**

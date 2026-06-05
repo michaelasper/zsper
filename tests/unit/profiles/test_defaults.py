@@ -9,7 +9,7 @@ from zsper.profiles.schema import ProfileError
 def test_work_personal_and_air_defaults_match_spec(tmp_path: Path) -> None:
     work = default_profile(mode="work", root=tmp_path / "work")
     personal = default_profile(mode="personal", root=tmp_path / "personal")
-    air = default_profile(mode="air-offline", root=tmp_path / "air")
+    air = default_profile(mode="air", root=tmp_path / "air")
 
     assert work.remote_access_policy == "disabled"
     assert work.network_policy == "local-first"
@@ -26,7 +26,7 @@ def test_work_personal_and_air_defaults_match_spec(tmp_path: Path) -> None:
     assert personal.embedding_profile == "local-bge-small-en-v1.5"
 
     assert air.remote_access_policy == "disabled"
-    assert air.network_policy == "offline"
+    assert air.network_policy == "local-first"
     assert air.model_profile == "zsper-air-gemma4-12b-it-6bit-128k"
     assert air.long_context_fallback is None
     assert air.storage_backend == "sqlite-local"
@@ -40,13 +40,15 @@ def test_invalid_mode_policy_combinations_fail_before_filesystem_use(tmp_path: P
             root=tmp_path / "work",
             overrides={"remote_access_policy": "tailscale-serve-only"},
         )
-
-    with pytest.raises(ProfileError, match="air-offline profiles require offline"):
-        default_profile(
-            mode="air-offline",
-            root=tmp_path / "air",
-            overrides={"network_policy": "local-first"},
+    for mode in ("work", "personal", "air"):
+        profile = default_profile(
+            mode=mode,
+            root=tmp_path / mode,
+            overrides={"network_policy": "offline"},
         )
+
+        assert profile.mode == mode
+        assert profile.network_policy == "offline"
 
 
 def test_custom_profile_names_get_distinct_database_names(tmp_path: Path) -> None:

@@ -303,7 +303,7 @@ def test_default_provider_reuses_loaded_model_between_calls(
         lambda: FakeSentenceTransformer,
         raising=False,
     )
-    profile = default_profile(mode="air-offline", root=tmp_path / "air")
+    profile = default_profile(mode="air", root=tmp_path / "air")
 
     provider_for_profile(profile).embed_texts(["first"])
     provider_for_profile(profile).embed_texts(["second"])
@@ -311,7 +311,7 @@ def test_default_provider_reuses_loaded_model_between_calls(
     assert constructed_models == ["sentence-transformers/all-MiniLM-L6-v2"]
 
 
-def test_air_offline_default_provider_uses_local_small_embedding_without_network(
+def test_air_default_provider_uses_local_small_embedding_without_network(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     isolated_registry_path: Path,
@@ -348,7 +348,7 @@ def test_air_offline_default_provider_uses_local_small_embedding_without_network
         raising=False,
     )
     profile = initialize_profile(
-        mode="air-offline",
+        mode="air",
         root=tmp_path / "air",
         registry_path=isolated_registry_path,
     )

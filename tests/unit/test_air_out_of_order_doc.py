@@ -7,11 +7,11 @@ TRACKING_DOC = (
     / "docs"
     / "superpowers"
     / "plans"
-    / "air-offline-out-of-order-progress.md"
+    / "offline-state-out-of-order-progress.md"
 )
 
 
-def test_air_offline_out_of_order_tracking_doc_exists() -> None:
+def test_offline_state_out_of_order_tracking_doc_exists() -> None:
     text = TRACKING_DOC.read_text(encoding="utf-8")
 
     assert "Out-Of-Order Portable Profile Work" in text

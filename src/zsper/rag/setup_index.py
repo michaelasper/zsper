@@ -31,8 +31,8 @@ class SetupIndexResult:
 def index_local_text_file(profile: Profile, source: str | Path) -> SetupIndexResult:
     """Index a local text file into the profile-local hybrid RAG stores."""
 
-    if profile.mode != "air-offline":
-        raise ValueError("setup RAG indexing requires an air-offline profile")
+    if profile.network_policy != "offline":
+        raise ValueError("setup RAG indexing requires an offline profile")
 
     RagPolicyGate(profile).require_ingest(source, user_triggered=True)
     index_root = Path(profile.root) / "brain" / "indexes"

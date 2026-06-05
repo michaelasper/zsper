@@ -30,7 +30,8 @@ GROUP_COMMANDS: dict[str, tuple[str, ...]] = {
     ),
     "agent": ("run", "attach", "status", "cancel"),
 }
-PROFILE_MODES = ("work", "personal", "air-offline")
+PROFILE_MODES = ("work", "personal", "air")
+NETWORK_POLICIES = ("local-first", "offline")
 AGENT_HARNESSES = ("pi", "opencode", "hermes")
 
 
@@ -58,6 +59,7 @@ def _profile_init(namespace: argparse.Namespace) -> int:
             mode=namespace.mode,
             root=namespace.root,
             name=namespace.name,
+            network_policy=namespace.network_policy,
         )
     except ProfileError as exc:
         print(str(exc), file=sys.stderr)
@@ -156,6 +158,7 @@ def _configure_reserved_signature(
         command_parser.add_argument("--mode", choices=PROFILE_MODES, required=True)
         command_parser.add_argument("--root", required=True)
         command_parser.add_argument("--name")
+        command_parser.add_argument("--network-policy", choices=NETWORK_POLICIES)
         return
 
     if group == "profile" and command == "use":

@@ -216,11 +216,13 @@ def _initialize_profile(
     mode: str,
     root: Path,
     registry_path: Path,
+    network_policy: str | None = None,
 ) -> Profile:
     return initialize_profile(
         mode=mode,
         root=root,
         registry_path=registry_path,
+        network_policy=network_policy,
     )
 
 
@@ -349,7 +351,7 @@ def test_rag_acceptance_ingests_searches_and_answers_with_exact_citations(
     assert answer.to_dict()["citations"] == [citation.to_dict()]
 
 
-def test_air_offline_acceptance_is_file_only_and_blocks_hosted_dependencies(
+def test_offline_state_acceptance_is_file_only_and_blocks_hosted_dependencies(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     isolated_registry_path: Path,
@@ -357,9 +359,10 @@ def test_air_offline_acceptance_is_file_only_and_blocks_hosted_dependencies(
     _clear_rag_env(monkeypatch)
     patches = _install_acceptance_patches(monkeypatch)
     profile = _initialize_profile(
-        mode="air-offline",
+        mode="air",
         root=tmp_path / "air",
         registry_path=isolated_registry_path,
+        network_policy="offline",
     )
 
     result = rag_commands.ingest_source(profile, REPO_DOCS_ROOT)

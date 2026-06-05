@@ -18,16 +18,20 @@ runtime shape for that boundary:
 - where Brain records and RAG indexes are stored;
 - which model endpoint identity the profile expects;
 - whether remote access is allowed;
-- whether hosted model, search, extraction, or model-download actions are
-  blocked;
 - which embedding profile is used for local retrieval.
+
+Network policy is separate from mode.
+
+Offline is a network-policy state, not a mode. `local-first` is the normal
+state; `offline` is a degraded state that any mode can use when hosted calls,
+URL ingestion, SearXNG queries, and model artifact downloads must be blocked.
 
 The mode is not the profile name. The profile name is your handle for a concrete
 workspace. Examples:
 
 - `work` can be a `work` mode profile named `work`;
 - `personal` can be a `personal` mode profile named `personal`;
-- `portable`, `field`, or `travel` can be `air-offline` mode profiles.
+- `portable`, `field`, or `travel` can be `air` mode profiles.
 
 ## Modes
 
@@ -35,7 +39,7 @@ workspace. Examples:
 | --- | --- | --- | --- | --- |
 | `work` | Professional projects and private work data | `postgres-pgvector` | `local-first` | `disabled` |
 | `personal` | Personal projects and private personal data | `postgres-pgvector` | `local-first` | `tailscale-serve-only` |
-| `air-offline` | Portable, disconnected, or lower-compute contexts | `sqlite-local` | `offline` | `disabled` |
+| `air` | Portable or lower-compute contexts | `sqlite-local` | `local-first` | `disabled` |
 
 ## Work Mode
 
@@ -68,41 +72,54 @@ zsper profile init \
 zsper profile use personal
 ```
 
-## Air-Offline Mode
+## Air Mode
 
-`air-offline` is the portable profile mode. The name describes the policy: the
-profile blocks hosted model APIs, hosted search APIs, hosted extraction APIs,
-SearXNG queries, URL ingestion, remote access, and model artifact downloads.
-
-This mode is useful beyond flights. Use it for laptops, external-drive
-workspaces, disconnected environments, or smaller local runtimes that should not
-depend on a higher-compute machine.
+Air mode is the low-compute profile mode. Use it for laptops, external-drive
+workspaces, or smaller local runtimes that should not depend on a higher-compute
+machine.
 
 The profile name does not need to be `air`.
 
 ```bash
 zsper profile init \
-  --mode air-offline \
+  --mode air \
   --name portable \
   --root "$HOME/.local/share/zsper/profiles/portable"
 zsper profile use portable
 ```
 
+## Offline State
+
+Offline state is selected with `network_policy=offline`. It blocks hosted model
+APIs, hosted search APIs, hosted extraction APIs, SearXNG queries, URL
+ingestion, plugin network access, and model artifact downloads. Local files and
+localhost services remain allowed.
+
+Any mode can start offline:
+
+```bash
+zsper profile init \
+  --mode work \
+  --network-policy offline \
+  --root "$HOME/.local/share/zsper/profiles/work"
+```
+
 ## Default Values
 
-| Field | `work` | `personal` | `air-offline` |
+| Field | `work` | `personal` | `air` |
 | --- | --- | --- | --- |
 | `model_profile` | `zsper-qwen35-oq6-fp16-mtp-omlx-128k` | `zsper-qwen35-oq6-fp16-mtp-omlx-128k` | `zsper-air-gemma4-12b-it-6bit-128k` |
 | `long_context_fallback` | `null` | `zsper-qwen35-oq6-omlx-256k` | `null` |
 | `embedding_profile` | `local-bge-small-en-v1.5` | `local-bge-small-en-v1.5` | `local-small-embedding` |
 | `storage_backend` | `postgres-pgvector` | `postgres-pgvector` | `sqlite-local` |
 | `remote_access_policy` | `disabled` | `tailscale-serve-only` | `disabled` |
-| `network_policy` | `local-first` | `local-first` | `offline` |
+| `network_policy` | `local-first` | `local-first` | `local-first` |
 
 ## Invariants
 
 - Work mode does not use personal remote-access defaults.
-- Air-offline mode always uses the offline network policy.
+- Air mode always uses disabled remote access.
+- Offline state can be used by work, personal, and air profiles.
 - Tailscale Funnel is forbidden for every mode.
 - Hosted model, search, and extraction dependencies are not core flows.
 - Profiles with different names or roots must not share Brain records, indexes,

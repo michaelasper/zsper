@@ -280,14 +280,15 @@ def test_local_first_web_capture_requires_explicit_user_action_before_fetch(
     assert store.list_documents(profile) == []
 
 
-def test_air_offline_web_capture_rejected_before_fetch(
+def test_offline_web_capture_rejected_before_fetch(
     tmp_path: Path,
     isolated_registry_path: Path,
 ) -> None:
     profile = initialize_profile(
-        mode="air-offline",
+        mode="air",
         root=tmp_path / "air",
         registry_path=isolated_registry_path,
+        network_policy="offline",
     )
     store = ProfileRagStore.sqlite(tmp_path / "rag.sqlite")
     calls: list[str] = []

@@ -68,7 +68,7 @@ def test_sqlite_vector_search_returns_semantic_fixture_chunk(
 ) -> None:
     ProfileVectorIndex, _, VectorSearchResult = _vector_api()
     profile = initialize_profile(
-        mode="air-offline",
+        mode="air",
         root=tmp_path / "air",
         registry_path=isolated_registry_path,
     )

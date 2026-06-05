@@ -35,6 +35,7 @@ def _init_profile(
     *,
     mode: str = "work",
     sqlite_overrides: bool = True,
+    network_policy: str | None = None,
 ) -> Path:
     monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
     monkeypatch.delenv("POSTGRES_DSN", raising=False)
@@ -51,6 +52,7 @@ def _init_profile(
         mode=mode,
         root=tmp_path / mode,
         registry_path=isolated_registry_path,
+        network_policy=network_policy,
     )
     return Path(profile.root)
 
@@ -198,7 +200,7 @@ def test_answer_cli_returns_citation_objects_from_ingested_markdown(
     assert body["citations"][0]["display_range"].startswith("bytes ")
 
 
-def test_air_offline_ingest_rejects_urls_before_web_capture(
+def test_offline_ingest_rejects_urls_before_web_capture(
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -208,7 +210,8 @@ def test_air_offline_ingest_rejects_urls_before_web_capture(
         monkeypatch,
         isolated_registry_path,
         tmp_path,
-        mode="air-offline",
+        mode="air",
+        network_policy="offline",
     )
 
     assert (

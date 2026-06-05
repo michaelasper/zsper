@@ -238,13 +238,13 @@ Next:
   zsper profile use work
   zsper profile doctor
 
-Portable profile:
-  zsper profile init --mode air-offline --root "$data_home/zsper/profiles/portable" --name portable
+Air profile:
+  zsper profile init --mode air --root "$data_home/zsper/profiles/portable" --name portable
   zsper profile use portable
 
-The air-offline mode is for portable, disconnected, or lower-compute contexts.
-It blocks hosted model, search, extraction, and model-download calls until the
-profile policy changes.
+Air mode is for portable or lower-compute contexts. To start any profile in
+offline state, add:
+  --network-policy offline
 EOF
 
   case ":$PATH:" in

@@ -13,8 +13,12 @@ from zsper.rag.parsers import (
 from zsper.rag.policy import RagPolicyError
 
 
-def _profile(mode: str, tmp_path: Path):
-    return default_profile(mode=mode, root=tmp_path / mode)
+def _profile(mode: str, tmp_path: Path, *, network_policy: str = "local-first"):
+    return default_profile(
+        mode=mode,
+        root=tmp_path / mode,
+        overrides={"network_policy": network_policy},
+    )
 
 
 @pytest.mark.parametrize(
@@ -92,11 +96,11 @@ def test_allowed_url_routes_to_web_capture(tmp_path: Path) -> None:
     assert route.reason == "local-first policy allows explicit web capture"
 
 
-def test_air_offline_url_rejected_by_policy_before_web_capture(tmp_path: Path) -> None:
+def test_offline_url_rejected_by_policy_before_web_capture(tmp_path: Path) -> None:
     with pytest.raises(RagPolicyError, match="offline policy blocks url-ingest"):
         select_parser(
             "https://example.com/research",
-            profile=_profile("air-offline", tmp_path),
+            profile=_profile("air", tmp_path, network_policy="offline"),
             user_triggered=True,
         )
 

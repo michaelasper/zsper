@@ -59,8 +59,8 @@ def test_endpoints_use_profile_specific_model_ids(tmp_path: Path) -> None:
     ]
 
 
-def test_air_offline_profile_uses_air_endpoint(tmp_path: Path) -> None:
-    profile = default_profile(mode="air-offline", root=tmp_path / "air")
+def test_air_profile_uses_air_endpoint(tmp_path: Path) -> None:
+    profile = default_profile(mode="air", root=tmp_path / "air")
 
     endpoints = endpoints_for_profile(profile)
 
@@ -70,9 +70,9 @@ def test_air_offline_profile_uses_air_endpoint(tmp_path: Path) -> None:
     assert endpoints[0].context_window == 131072
 
 
-def test_air_offline_endpoint_uses_profile_specific_model_id(tmp_path: Path) -> None:
+def test_air_endpoint_uses_profile_specific_model_id(tmp_path: Path) -> None:
     profile = default_profile(
-        mode="air-offline",
+        mode="air",
         root=tmp_path / "air",
         overrides={"model_profile": "zsper-air-custom"},
     )

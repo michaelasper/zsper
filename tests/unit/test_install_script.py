@@ -55,7 +55,8 @@ def test_install_script_dry_run_uses_home_config_without_default_profile(
     assert "ZSPER_CONFIG_DIR" in result.stdout
     assert "ZSPER_PROFILE_REGISTRY" in result.stdout
     assert "zsper profile use work" in result.stdout
-    assert "air-offline" in result.stdout
+    assert "--mode air" in result.stdout
+    assert "--network-policy offline" in result.stdout
     assert "setup.sh --air" not in result.stdout
     assert not (home / ".config" / "zsper" / "config.toml").exists()
     assert not (home / ".config" / "zsper" / "profiles.json").exists()

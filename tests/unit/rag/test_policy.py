@@ -9,11 +9,15 @@ from zsper.rag import RagPolicyGate as ExportedRagPolicyGate
 from zsper.rag.policy import RagPolicyError, RagPolicyGate
 
 
-def _profile(mode: str, tmp_path: Path):
-    return default_profile(mode=mode, root=tmp_path / mode)
+def _profile(mode: str, tmp_path: Path, *, network_policy: str = "local-first"):
+    return default_profile(
+        mode=mode,
+        root=tmp_path / mode,
+        overrides={"network_policy": network_policy},
+    )
 
 
-def test_air_offline_url_ingest_fails_before_http_call(
+def test_offline_url_ingest_fails_before_http_call(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -24,7 +28,7 @@ def test_air_offline_url_ingest_fails_before_http_call(
         raise AssertionError("policy test must not make HTTP calls")
 
     monkeypatch.setattr("urllib.request.urlopen", forbidden_urlopen)
-    gate = RagPolicyGate(_profile("air-offline", tmp_path))
+    gate = RagPolicyGate(_profile("air", tmp_path, network_policy="offline"))
 
     with pytest.raises(RagPolicyError, match="offline policy blocks url-ingest"):
         gate.require_ingest(
@@ -40,7 +44,7 @@ def test_rag_policy_gate_is_exported_from_rag_package() -> None:
     assert ExportedRagPolicyError is RagPolicyError
 
 
-def test_air_offline_rejects_searxng_before_search_http_call(
+def test_offline_rejects_searxng_before_search_http_call(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -51,7 +55,7 @@ def test_air_offline_rejects_searxng_before_search_http_call(
         raise AssertionError("policy test must not make HTTP calls")
 
     monkeypatch.setattr("urllib.request.urlopen", forbidden_urlopen)
-    gate = RagPolicyGate(_profile("air-offline", tmp_path))
+    gate = RagPolicyGate(_profile("air", tmp_path, network_policy="offline"))
 
     with pytest.raises(RagPolicyError, match="offline policy blocks searxng-query"):
         gate.require_search(
@@ -70,12 +74,12 @@ def test_air_offline_rejects_searxng_before_search_http_call(
         ("model-artifact-download", "https://huggingface.co/google/gemma"),
     ],
 )
-def test_air_offline_rejects_hosted_rag_dependencies(
+def test_offline_rejects_hosted_rag_dependencies(
     tmp_path: Path,
     action: str,
     target: str,
 ) -> None:
-    gate = RagPolicyGate(_profile("air-offline", tmp_path))
+    gate = RagPolicyGate(_profile("air", tmp_path, network_policy="offline"))
 
     with pytest.raises(RagPolicyError, match=f"offline policy blocks {action}"):
         gate.require_hosted_dependency(target, action=action)

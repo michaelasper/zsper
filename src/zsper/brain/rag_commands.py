@@ -209,13 +209,20 @@ def search_components_for_profile(
 
 def components_for_profile(profile: Profile) -> RagCommandComponents:
     index_root = Path(profile.root) / "brain" / "indexes"
-    postgres_dsn = _postgres_dsn_for_profile(profile)
     rag_sqlite_path = os.environ.get("ZSPER_RAG_SQLITE_PATH")
     vector_sqlite_path = os.environ.get("ZSPER_VECTOR_SQLITE_PATH")
+    offline_state = profile.network_policy == "offline"
+    use_sqlite = (
+        offline_state
+        or profile.storage_backend == "sqlite-local"
+        or rag_sqlite_path is not None
+        or vector_sqlite_path is not None
+    )
+    postgres_dsn = None if offline_state else _postgres_dsn_for_profile(profile)
     if postgres_dsn:
         _require_local_postgres_dsn(postgres_dsn)
 
-    if rag_sqlite_path or profile.storage_backend == "sqlite-local":
+    if use_sqlite:
         store = ProfileRagStore.sqlite(rag_sqlite_path or index_root / "rag.sqlite")
     else:
         store = ProfileRagStore.postgres_dsn(postgres_dsn)
@@ -224,10 +231,7 @@ def components_for_profile(profile: Profile) -> RagCommandComponents:
         os.environ.get("ZSPER_BM25_SQLITE_PATH") or index_root / "bm25.sqlite"
     )
 
-    if (
-        vector_sqlite_path
-        or profile.storage_backend == "sqlite-local"
-    ):
+    if use_sqlite:
         vector_index = ProfileVectorIndex.sqlite(
             vector_sqlite_path or index_root / "vectors.sqlite"
         )

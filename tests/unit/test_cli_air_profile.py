@@ -29,9 +29,7 @@ def test_cli_air_profile_init_show_list_and_doctor(
     monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
     root = tmp_path / "air-profile"
 
-    init_code = app(
-        ["profile", "init", "--mode", "air-offline", "--root", str(root)]
-    )
+    init_code = app(["profile", "init", "--mode", "air", "--root", str(root)])
     init_output = capsys.readouterr()
     list_code = app(["profile", "list"])
     list_output = capsys.readouterr()
@@ -47,13 +45,14 @@ def test_cli_air_profile_init_show_list_and_doctor(
 
     assert list_code == 0
     assert "air" in list_output.out
-    assert "air-offline" in list_output.out
+    assert "\tair\t" in list_output.out
     assert str(root.resolve()) in list_output.out
 
     assert show_code == 0
     profile_json = json.loads(show_output.out)
     assert profile_json["name"] == "air"
-    assert profile_json["network_policy"] == "offline"
+    assert profile_json["mode"] == "air"
+    assert profile_json["network_policy"] == "local-first"
     assert profile_json["model_profile"] == "zsper-air-gemma4-12b-it-6bit-128k"
 
     assert doctor_code == 0
@@ -69,7 +68,21 @@ def test_cli_air_profile_blocks_url_ingest_before_placeholder(
 ) -> None:
     monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
     root = tmp_path / "air-profile"
-    assert app(["profile", "init", "--mode", "air-offline", "--root", str(root)]) == 0
+    assert (
+        app(
+            [
+                "profile",
+                "init",
+                "--mode",
+                "air",
+                "--root",
+                str(root),
+                "--network-policy",
+                "offline",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
 
     exit_code = app(
@@ -90,7 +103,21 @@ def test_cli_air_profile_rejects_missing_ingest_path(
 ) -> None:
     monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
     root = tmp_path / "air-profile"
-    assert app(["profile", "init", "--mode", "air-offline", "--root", str(root)]) == 0
+    assert (
+        app(
+            [
+                "profile",
+                "init",
+                "--mode",
+                "air",
+                "--root",
+                str(root),
+                "--network-policy",
+                "offline",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
 
     exit_code = app(["brain", "ingest", "--profile", "air"])
@@ -110,7 +137,21 @@ def test_cli_air_profile_local_file_ingest_accepts_offline_file(
     root = tmp_path / "air-profile"
     local_file = tmp_path / "notes.md"
     local_file.write_text("offline notes", encoding="utf-8")
-    assert app(["profile", "init", "--mode", "air-offline", "--root", str(root)]) == 0
+    assert (
+        app(
+            [
+                "profile",
+                "init",
+                "--mode",
+                "air",
+                "--root",
+                str(root),
+                "--network-policy",
+                "offline",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
 
     exit_code = app(["brain", "ingest", str(local_file), "--profile", "air"])
@@ -132,7 +173,21 @@ def test_cli_air_profile_can_use_configured_default(
     root = tmp_path / "air-profile"
     local_file = tmp_path / "notes.md"
     local_file.write_text("portable compute notes", encoding="utf-8")
-    assert app(["profile", "init", "--mode", "air-offline", "--root", str(root)]) == 0
+    assert (
+        app(
+            [
+                "profile",
+                "init",
+                "--mode",
+                "air",
+                "--root",
+                str(root),
+                "--network-policy",
+                "offline",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
     assert app(["profile", "use", "air"]) == 0
     capsys.readouterr()

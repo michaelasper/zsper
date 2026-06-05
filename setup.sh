@@ -8,7 +8,7 @@ Usage: ./setup.sh --air [options]
 Prepare this checkout for a portable profile.
 
 Options:
-  --air              Prepare a portable profile using air-offline mode.
+  --air              Prepare a portable air profile in offline state.
   --root PATH        Profile root. Defaults to $XDG_DATA_HOME/zsper/profiles/portable.
   --name NAME        Profile name. Defaults to portable.
   --registry PATH    Profile registry. Defaults to $XDG_CONFIG_HOME/zsper/profiles.json.
@@ -166,7 +166,11 @@ elif run_zsper profile show --profile "$air_root" > "$profile_json" 2>/dev/null;
   profile_ref="$air_root"
   echo "Using existing portable profile root: $air_root"
 else
-  run_zsper profile init --mode air-offline --root "$air_root" --name "$air_name"
+  run_zsper profile init \
+    --mode air \
+    --network-policy offline \
+    --root "$air_root" \
+    --name "$air_name"
   run_zsper profile show --profile "$air_name" > "$profile_json"
   profile_ref="$air_name"
 fi
@@ -180,8 +184,22 @@ profile = json.loads(Path(os.environ["PROFILE_JSON"]).read_text(encoding="utf-8"
 print(profile["mode"])
 PY
 )"
-if [[ "$profile_mode" != "air-offline" ]]; then
-  echo "Profile $profile_ref is $profile_mode, not air-offline." >&2
+if [[ "$profile_mode" != "air" ]]; then
+  echo "Profile $profile_ref is $profile_mode, not air." >&2
+  exit 1
+fi
+
+profile_network_policy="$(PROFILE_JSON="$profile_json" "$python_bin" - <<'PY'
+import json
+import os
+from pathlib import Path
+
+profile = json.loads(Path(os.environ["PROFILE_JSON"]).read_text(encoding="utf-8"))
+print(profile["network_policy"])
+PY
+)"
+if [[ "$profile_network_policy" != "offline" ]]; then
+  echo "Profile $profile_ref uses $profile_network_policy, not offline." >&2
   exit 1
 fi
 

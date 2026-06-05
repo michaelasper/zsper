@@ -11,12 +11,15 @@ def _init_profile(
     root: Path,
     isolated_registry_path: Path,
     monkeypatch,
+    *,
+    network_policy: str | None = None,
 ):
     monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
     return initialize_profile(
         mode=mode,
         root=root,
         registry_path=isolated_registry_path,
+        network_policy=network_policy,
     )
 
 
@@ -88,10 +91,11 @@ def test_context_server_refuses_offline_disallowed_network_endpoint(
     isolated_registry_path: Path,
 ) -> None:
     _init_profile(
-        "air-offline",
+        "air",
         tmp_path / "air",
         isolated_registry_path,
         monkeypatch,
+        network_policy="offline",
     )
 
     assert (

@@ -12,8 +12,8 @@ def test_doctor_passes_for_healthy_profiles(
     tmp_path: Path,
     isolated_registry_path: Path,
 ) -> None:
-    for mode in ("work", "personal", "air-offline"):
-        name = "air" if mode == "air-offline" else mode
+    for mode in ("work", "personal", "air"):
+        name = mode
         initialize_profile(
             mode=mode,
             root=tmp_path / name,

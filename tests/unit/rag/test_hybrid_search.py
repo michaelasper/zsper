@@ -388,7 +388,7 @@ def test_search_api_uses_profile_local_sqlite_rag_store_for_air_default_paths(
     from app.main import create_app
 
     profile = initialize_profile(
-        mode="air-offline",
+        mode="air",
         root=tmp_path / "air",
         registry_path=isolated_registry_path,
     )
@@ -479,7 +479,7 @@ def test_cli_brain_search_uses_hybrid_index_for_air_profile_default_paths(
     monkeypatch.delenv("ZSPER_VECTOR_SQLITE_PATH", raising=False)
     monkeypatch.delenv("POSTGRES_DSN", raising=False)
     profile = initialize_profile(
-        mode="air-offline",
+        mode="air",
         root=tmp_path / "air",
         registry_path=isolated_registry_path,
     )

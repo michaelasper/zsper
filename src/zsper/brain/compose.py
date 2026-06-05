@@ -50,7 +50,7 @@ def brain_ports_for_profile(profile: Profile) -> BrainPorts:
     default_bases = {
         ("work", "work"): 7420,
         ("personal", "personal"): 7520,
-        ("air-offline", "air"): 7620,
+        ("air", "air"): 7620,
     }
     base = default_bases.get((profile.mode, profile.name))
     if base is None:

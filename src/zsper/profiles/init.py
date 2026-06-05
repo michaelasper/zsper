@@ -54,8 +54,10 @@ def initialize_profile(
     root: Path | str,
     registry_path: Path | str | None = None,
     name: str | None = None,
+    network_policy: str | None = None,
 ) -> Profile:
-    profile = default_profile(mode=mode, root=root, name=name)
+    overrides = {"network_policy": network_policy} if network_policy is not None else None
+    profile = default_profile(mode=mode, root=root, name=name, overrides=overrides)
     root_path = Path(profile.root)
     if (root_path / "profile.json").exists():
         raise ProfileError(f"{root_path} already contains profile.json")

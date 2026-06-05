@@ -155,9 +155,10 @@ def test_offline_profile_reports_searxng_disabled_not_failed(
     isolated_registry_path: Path,
 ) -> None:
     profile = initialize_profile(
-        mode="air-offline",
+        mode="air",
         root=tmp_path / "air",
         registry_path=isolated_registry_path,
+        network_policy="offline",
     )
     client = TestClient(
         create_app(

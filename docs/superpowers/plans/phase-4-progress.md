@@ -139,7 +139,7 @@ Milestone: M4 Documents, RAG, And Citations
   Markdown, PDF via a mocked local Docling converter, mocked web capture, repo
   docs through the repo directory route, raw and parsed artifacts, chunks,
   citation anchors, embedding metadata, BM25 exact search, dense semantic
-  search, structured answer citations, and air/offline file-only plus hosted
+  search, structured answer citations, and offline-state file-only plus hosted
   dependency rejection. Local verification:
   `pytest tests/integration/rag/test_rag_acceptance.py -q` -> 2 passed.
 
@@ -151,7 +151,7 @@ Milestone: M4 Documents, RAG, And Citations
   contexts.
 - Mutating document flows append profile-local JSONL ledger records while
   preserving Postgres/pgvector as the online canonical store target.
-- `air-offline` profiles keep a SQLite-compatible/file-only iteration path.
+- Offline state keeps a SQLite-compatible/file-only iteration path.
 - Retrieval remains hybrid BM25 plus dense vectors; dense-only core retrieval is
   not acceptable.
 - Any answer that uses retrieved context returns exact citation objects with

@@ -54,10 +54,12 @@ Profiles define the trust and runtime boundary for a workflow.
 | --- | --- | --- | --- |
 | `work` | Professional projects and private work data | Postgres + pgvector | Local-first, remote access disabled |
 | `personal` | Personal projects and private personal data | Postgres + pgvector | Local-first, Tailscale Serve allowed |
-| `air-offline` | Portable, disconnected, or lower-compute contexts | Profile-local SQLite path | Offline policy, hosted calls blocked |
+| `air` | Portable or lower-compute contexts | Profile-local SQLite path | Local-first, remote access disabled |
 
 The mode is not the profile name. Choose names that match the machine or
 workflow, such as `work`, `personal`, `portable`, `field`, or `travel`.
+Offline is a network-policy state, not a mode; any profile can start offline
+with `--network-policy offline`.
 
 Read [Profile Modes](docs/architecture/profile-modes.md) for the design
 model and the exact defaults.
@@ -83,7 +85,7 @@ For a portable profile:
 
 ```bash
 zsper profile init \
-  --mode air-offline \
+  --mode air \
   --name portable \
   --root "$HOME/.local/share/zsper/profiles/portable"
 zsper profile use portable
@@ -132,7 +134,7 @@ allowed and disallowed dependency forms.
 | --- | --- |
 | Understand profile modes | [Profile Modes](docs/architecture/profile-modes.md) |
 | Understand the platform shape | [Platform Overview](docs/architecture/platform-overview.md) |
-| Prepare a portable profile | [Portable Profile Runbook](docs/runbooks/air-offline.md) |
+| Use offline state | [Offline State](docs/runbooks/offline-state.md) |
 | Develop locally | [Local Development](docs/runbooks/local-development.md) |
 | Run verification | [Testing](docs/runbooks/testing.md) |
 | Read the full product spec | [Ultimate Spec](docs/zsper-local-ai-platform-ultimate-spec.md) |
@@ -145,7 +147,7 @@ allowed and disallowed dependency forms.
 | Model download and serving live outside this repo | Prepare models through `llm-server` or another local OpenAI-compatible serving contract. |
 | Rich parsing depends on local runtimes | Install the `rag` extras and keep Docling and embedding models available locally. |
 | Work and personal RAG use local Postgres services | Run profile Brain services before using Postgres-backed ingest/search flows. |
-| Portable profiles block hosted calls | Use local files and local model endpoints unless the profile policy changes. |
+| Offline state blocks hosted calls | Use `--network-policy offline` when a profile must avoid hosted model, search, extraction, and model-download calls. |
 
 ## Troubleshooting
 

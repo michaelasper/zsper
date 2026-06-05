@@ -1,4 +1,4 @@
-"""Profile-local file ingest and exact search for air/offline mode."""
+"""Profile-local file ingest and exact search for offline profile state."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
 
 
 class BrainOfflineError(RuntimeError):
-    """Raised when an air/offline Brain operation cannot proceed."""
+    """Raised when an offline Brain operation cannot proceed."""
 
 
 @dataclass(frozen=True)
@@ -107,13 +107,13 @@ def _append_jsonl(path: Path, payload: dict[str, Any]) -> None:
         handle.write(json.dumps(payload, sort_keys=True) + "\n")
 
 
-def _ensure_air_offline(profile: Profile) -> None:
-    if profile.mode != "air-offline" or profile.network_policy != "offline":
-        raise BrainOfflineError("air/offline file store requires an air-offline profile")
+def _ensure_offline(profile: Profile) -> None:
+    if profile.network_policy != "offline":
+        raise BrainOfflineError("offline file store requires offline network_policy")
 
 
 def ingest_local_file(profile: Profile, source: str | Path) -> OfflineDocument:
-    _ensure_air_offline(profile)
+    _ensure_offline(profile)
     source_text = str(source)
     action = "url-ingest" if looks_like_url(source_text) else "local-file-read"
     decision = check_network_policy(
@@ -133,7 +133,7 @@ def ingest_local_file(profile: Profile, source: str | Path) -> OfflineDocument:
     try:
         parsed_text = content.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise BrainOfflineError("air/offline MVP accepts UTF-8 text files only") from exc
+        raise BrainOfflineError("offline file store accepts UTF-8 text files only") from exc
 
     document_id = _document_id(source_path, content)
     created_at = _utc_now()
@@ -193,7 +193,7 @@ def _snippet(text: str, query_tokens: set[str]) -> str:
 
 
 def search_local_files(profile: Profile, query: str, *, limit: int = 10) -> list[SearchResult]:
-    _ensure_air_offline(profile)
+    _ensure_offline(profile)
     query_tokens = set(_tokenize(query))
     if not query_tokens:
         return []

@@ -31,15 +31,15 @@ MODE_DEFAULTS: dict[str, dict[str, str | None]] = {
         "network_policy": "local-first",
         "database_name": "zsper_personal",
     },
-    "air-offline": {
+    "air": {
         "name": "air",
         "model_profile": "zsper-air-gemma4-12b-it-6bit-128k",
         "long_context_fallback": None,
         "embedding_profile": "local-small-embedding",
         "storage_backend": "sqlite-local",
         "remote_access_policy": "disabled",
-        "network_policy": "offline",
-        "database_name": "zsper_air_offline",
+        "network_policy": "local-first",
+        "database_name": "zsper_air",
     },
 }
 

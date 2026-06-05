@@ -31,6 +31,39 @@ def test_profile_cli_init_list_show_and_doctor(
     assert "profile work OK" in capsys.readouterr().out
 
 
+def test_profile_cli_can_initialize_work_profile_in_offline_state(
+    capsys,
+    monkeypatch,
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
+    root = tmp_path / "work"
+
+    assert (
+        app(
+            [
+                "profile",
+                "init",
+                "--mode",
+                "work",
+                "--root",
+                str(root),
+                "--network-policy",
+                "offline",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert app(["profile", "show", "--profile", "work"]) == 0
+    shown = json.loads(capsys.readouterr().out)
+
+    assert shown["mode"] == "work"
+    assert shown["network_policy"] == "offline"
+
+
 def test_profile_use_sets_default_for_profile_commands(
     capsys,
     monkeypatch,

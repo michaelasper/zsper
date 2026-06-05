@@ -23,8 +23,9 @@ The platform must run as two reusable but separately deployable local systems:
 Every install is isolated. Work and personal profiles use the same codebase and
 deployment shape, but they must never share data roots, databases, secrets,
 model configs, agent histories, memory stores, document indexes, task ledgers,
-or generated client configs. Air/offline mode uses a smaller code-only model
-profile and disables network-dependent flows.
+or generated client configs. Air mode uses a smaller code-only model profile.
+Offline is a network-policy state that can disable network-dependent flows for
+any profile.
 
 The system is local-first and no SaaS integration is a core dependency. Notion,
 Linear, hosted search, hosted model APIs, hosted extraction services, Open WebUI,
@@ -66,7 +67,7 @@ primary interface is:
 base_url: http://127.0.0.1:9127/v1
 primary_model: zsper-qwen35-oq6-fp16-mtp-omlx-128k
 personal_long_context_fallback: zsper-qwen35-oq6-omlx-256k
-air_offline_model: zsper-air-gemma4-12b-it-6bit-128k
+air_model: zsper-air-gemma4-12b-it-6bit-128k
 ```
 
 ### Data And RAG Engineer Perspective
@@ -158,7 +159,7 @@ and asserts no shared state at every boundary.
 `~/source/zsper`:
 
 - Owns all user-facing product commands.
-- Owns work, personal, and `air-offline` profile initialization and isolation.
+- Owns work, personal, and air profile initialization and isolation.
 - Generates client configs for Zed, OpenCode, Pi/little-coder, and optional
   Hermes launcher profiles.
 - Owns `zsper-brain` web app, local APIs, data model, RAG, memories, notes,
@@ -272,16 +273,16 @@ Design decisions:
 - Personal long-context fallback is available for heavy document or memory
   sessions.
 
-### Air/Offline Mode
+### Air Mode
 
-Purpose: travel, no-network, low-risk local coding and local notes/tasks.
+Purpose: lower-compute local coding, portable work, and local notes/tasks.
 
 Defaults:
 
 ```yaml
-mode: air-offline
+mode: air
 remote_access_policy: disabled
-network_policy: offline
+network_policy: local-first
 model_profile: zsper-air-gemma4-12b-it-6bit-128k
 long_context_fallback: null
 storage_backend: sqlite-or-postgres-local
@@ -290,12 +291,29 @@ embedding_profile: local-small-embedding
 
 Design decisions:
 
-- Air/offline disables web capture, SearXNG querying, hosted calls, and plugin
-  network access.
-- Air/offline uses file-only retrieval and local notes/tasks.
+- Air uses the smaller local code model and a SQLite-compatible storage path by
+  default.
 - The default code-only model is Gemma 4 12B 6-bit.
 - Qwen 9B is not added by default until artifact verification and quality checks
   prove it is worth including.
+
+### Offline State
+
+Purpose: degraded operation when the current profile must avoid hosted or
+network-dependent work.
+
+Defaults:
+
+```yaml
+network_policy: offline
+```
+
+Design decisions:
+
+- Offline state can be used by work, personal, and air profiles.
+- Offline state disables web capture, SearXNG querying, hosted calls, plugin
+  network access, and model artifact downloads.
+- Offline state keeps file-only retrieval and local notes/tasks available.
 
 ## Profile Isolation
 
@@ -359,7 +377,7 @@ Design decisions:
 type Profile = {
   schema_version: 1;
   name: string;
-  mode: "work" | "personal" | "air-offline";
+  mode: "work" | "personal" | "air";
   root: string;
   model_profile: string;
   long_context_fallback: string | null;
@@ -379,7 +397,8 @@ Profile invariants:
 - `database_name` must be unique across work and personal installs.
 - `mode=work` implies `remote_access_policy=disabled` by default.
 - `mode=personal` may use `tailscale-serve-only`.
-- `mode=air-offline` implies `network_policy=offline`.
+- `mode=air` implies `remote_access_policy=disabled`.
+- `network_policy=offline` is valid for every mode.
 
 ## Public CLI
 
@@ -388,7 +407,7 @@ The CLI name is `zsper`.
 ### Profile Commands
 
 ```bash
-zsper profile init --mode work|personal|air-offline --root <path>
+zsper profile init --mode work|personal|air --root <path>
 zsper profile list
 zsper profile show --profile <name-or-root>
 zsper profile doctor --profile <name-or-root>
@@ -502,7 +521,7 @@ output_limit: 4096
 tool_support: true
 ```
 
-Air/offline endpoint:
+Air endpoint:
 
 ```yaml
 provider_id: zsper-air-code
@@ -666,11 +685,12 @@ Profile-specific database names:
 ```text
 zsper_work
 zsper_personal
-zsper_air_offline
+zsper_air
 ```
 
-Air/offline may use local Postgres if already available or SQLite for the first
-offline-only iteration. SQLite mode must preserve the same logical record
+Air defaults to a SQLite-compatible local storage path. Offline state may use
+SQLite-compatible local stores for degraded operation even when the normal
+profile backend is Postgres. SQLite mode must preserve the same logical record
 schema.
 
 ### Document Pipeline
@@ -695,7 +715,7 @@ Parser decisions:
 - Markdown, text, JSON, YAML, and source files can use local text parsing.
 - PDFs, Office files, and complex HTML use Docling.
 - Webpages are captured locally when network policy allows.
-- Air/offline rejects URL ingestion and accepts file paths only.
+- Offline state rejects URL ingestion and accepts file paths only.
 
 Chunking decisions:
 
@@ -739,7 +759,7 @@ Design decisions:
 - SearXNG is the default discovery service.
 - Search results are not automatically trusted.
 - Research records are distinct from document records until ingested.
-- Air/offline disables external research and keeps local-only saved research.
+- Offline state disables external research and keeps local-only saved research.
 
 ### Notes
 
@@ -1184,7 +1204,7 @@ Assert:
 
 With network disabled:
 
-- Initialize air/offline profile.
+- Initialize a profile in offline state.
 - Start code endpoint using local model artifact.
 - Create notes.
 - Create tasks.
@@ -1366,7 +1386,7 @@ Success criteria:
 
 Deliverables:
 
-- Air/offline policy enforcement.
+- Offline policy enforcement.
 - Offline file-only retrieval.
 - No-network test harness.
 - Hosted-call detection tests.
@@ -1374,7 +1394,7 @@ Deliverables:
 
 Success criteria:
 
-- `air-offline` profiles work without network.
+- Work, personal, and air profiles work in offline state without network.
 - Forbidden hosted calls fail tests.
 - Personal Serve policy is allowed.
 - Funnel is rejected.
@@ -1387,8 +1407,8 @@ Success criteria:
 4. Work and personal share code, not state.
 5. Personal may use Tailscale Serve only.
 6. Work remote access defaults to disabled.
-7. Air/offline defaults to Gemma 4 12B 6-bit code-only profile.
-8. Qwen 9B is excluded from air/offline default until verified.
+7. Air defaults to Gemma 4 12B 6-bit code-only profile.
+8. Qwen 9B is excluded from air default until verified.
 9. Postgres + pgvector is canonical for work/personal.
 10. JSONL ledgers mirror canonical events for audit and recovery.
 11. Honcho is a sidecar, not canonical memory storage.
@@ -1438,9 +1458,9 @@ These questions are not blockers because this spec chooses a default.
    Default decision: Python FastAPI, because profile/RAG/orchestrator code is
    Python-first and easier to test locally.
 
-2. Should air/offline use Postgres or SQLite first?
+2. Should offline state use Postgres or SQLite first?
    Default decision: support local Postgres when available, but allow SQLite for
-   the first file-only offline iteration.
+   file-only offline iteration.
 
 3. Should global editor config patching be automatic?
    Default decision: no. Generate profile-local configs by default. Patch global
@@ -1472,6 +1492,7 @@ Zsper is ready for first daily use when:
 - Notes, tasks, and memory events can be created and searched.
 - An agent task can launch through tmux, record events, and attach artifacts.
 - Work and personal isolation tests prove no shared state.
-- Air/offline mode works with local files and no network.
+- Work, personal, and air profiles work with local files and no network when
+  offline state is active.
 - Security tests prove forbidden hosted integrations are not called in core
   flows.

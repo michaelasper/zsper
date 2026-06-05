@@ -1,4 +1,4 @@
-"""Network policy checks for local-first and air/offline profiles."""
+"""Network policy checks for local-first and offline profile states."""
 
 from __future__ import annotations
 

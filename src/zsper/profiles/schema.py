@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-PROFILE_MODES = frozenset({"work", "personal", "air-offline"})
+PROFILE_MODES = frozenset({"work", "personal", "air"})
 STORAGE_BACKENDS = frozenset({"postgres-pgvector", "sqlite-local"})
 REMOTE_ACCESS_POLICIES = frozenset({"disabled", "tailscale-serve-only"})
 NETWORK_POLICIES = frozenset({"local-first", "offline"})
@@ -141,7 +141,5 @@ def validate_profile(profile: Profile) -> None:
         raise ProfileError("profile root must be absolute")
     if profile.mode == "work" and profile.remote_access_policy != "disabled":
         raise ProfileError("work profiles default to disabled remote access")
-    if profile.mode == "air-offline" and profile.network_policy != "offline":
-        raise ProfileError("air-offline profiles require offline network_policy")
-    if profile.mode == "air-offline" and profile.remote_access_policy != "disabled":
-        raise ProfileError("air-offline profiles require disabled remote access")
+    if profile.mode == "air" and profile.remote_access_policy != "disabled":
+        raise ProfileError("air profiles require disabled remote access")

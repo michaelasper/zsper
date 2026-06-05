@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -64,6 +65,9 @@ def test_setup_air_script_prepares_isolated_portable_profile(tmp_path: Path) -> 
     assert (config_home / "zsper" / "profiles.json").is_file()
     portable_root = data_home / "zsper" / "profiles" / "portable"
     assert (portable_root / "profile.json").is_file()
+    profile_json = json.loads((portable_root / "profile.json").read_text(encoding="utf-8"))
+    assert profile_json["mode"] == "air"
+    assert profile_json["network_policy"] == "offline"
     assert (portable_root / "brain" / "ledgers" / "documents.jsonl").is_file()
 
     search = subprocess.run(
