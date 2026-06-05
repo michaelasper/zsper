@@ -8,6 +8,7 @@ from argparse import Namespace
 from typing import Any
 from urllib.parse import urlparse
 
+from zsper.config.user import UserConfigError, profile_ref_or_default
 from zsper.profiles import Profile, ProfileError, resolve_profile
 from zsper.security.network_policy import (
     NetworkPolicyError,
@@ -89,7 +90,7 @@ def metadata_for_profile_ref(
     *,
     endpoint: str = DEFAULT_CONTEXT_SERVER_ENDPOINT,
 ) -> dict[str, Any]:
-    profile = resolve_profile(profile_ref)
+    profile = resolve_profile(profile_ref_or_default(profile_ref))
     return build_context_server_metadata(profile, endpoint=endpoint)
 
 
@@ -97,7 +98,7 @@ def command(namespace: Namespace) -> int:
     endpoint = namespace.endpoint or DEFAULT_CONTEXT_SERVER_ENDPOINT
     try:
         metadata = metadata_for_profile_ref(namespace.profile, endpoint=endpoint)
-    except (ContextServerError, NetworkPolicyError, ProfileError) as exc:
+    except (ContextServerError, NetworkPolicyError, ProfileError, UserConfigError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
 

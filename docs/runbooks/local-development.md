@@ -6,7 +6,7 @@ Source references:
   (`docs/zsper-local-ai-platform-ultimate-spec.md`)
 - [Implementation DAG](../superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md)
   (`docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md`)
-- [Air/offline runbook](air-offline.md)
+- [Portable/air runbook](air-offline.md)
   (`docs/runbooks/air-offline.md`)
 
 Use this runbook for local development in `/Users/michaelasper/source/zsper`.
@@ -63,8 +63,8 @@ Purpose: verify the CLI package entry point exposes the reserved command groups.
 ./setup.sh --air
 ```
 
-Purpose: prepare the current air/offline MVP, create or reuse the `air` profile,
-and verify local file ingest/search without hosted calls.
+Purpose: prepare the current portable/air MVP, create or reuse the `air`
+profile, and verify local file ingest/search without hosted calls.
 
 ## Development Rules
 

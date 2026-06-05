@@ -1,4 +1,4 @@
-# How To Prepare An Air/Offline Profile
+# How To Prepare A Portable/Air Profile
 
 Source references:
 
@@ -7,14 +7,34 @@ Source references:
 - [Implementation DAG](../superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md)
   (`docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md`)
 
-Use this guide when you need the `air` profile ready for local work before the
-full Brain/RAG/orchestrator milestones are complete. The current path prepares
-profile-local storage, verifies local file ingest, and checks exact offline
-search. Model downloads and model serving stay outside this repository.
+Use this guide when you need an `air` profile ready for portable or lower-compute
+local work before the full Brain/RAG/orchestrator milestones are complete. Air
+does not mean it must be the install default. In the current MVP, the
+`air-offline` mode blocks hosted model, search, and extraction calls until a
+local laptop runtime is configured.
 
-## Prepare The Profile
+## Install The CLI
 
-Run the setup script from the repository root:
+Install Zsper first. Installation is profile-neutral: it creates the CLI and
+home-scoped config, but it does not create a profile and does not choose a
+default profile.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh | bash
+```
+
+Create and select the air profile explicitly:
+
+```bash
+zsper profile init --mode air-offline --root "$HOME/.local/share/zsper/profiles/air" --name air
+zsper profile use air
+zsper profile doctor
+```
+
+## Prepare From A Source Checkout
+
+If you are already working from the repository, the setup helper can prepare the
+current air MVP:
 
 ```bash
 ./setup.sh --air
@@ -48,57 +68,61 @@ Use explicit paths when preparing a laptop, an external drive, or a disposable
 test profile:
 
 ```bash
-./setup.sh --air \
-  --registry "$HOME/.config/zsper/profiles.json" \
-  --root "$HOME/.local/share/zsper/profiles/air"
+zsper profile init \
+  --mode air-offline \
+  --name air-laptop \
+  --root "$HOME/.local/share/zsper/profiles/air-laptop"
+zsper profile use air-laptop
 ```
 
-The same values can be supplied with environment variables:
-
-```bash
-export ZSPER_PROFILE_REGISTRY="$HOME/.config/zsper/profiles.json"
-export ZSPER_AIR_ROOT="$HOME/.local/share/zsper/profiles/air"
-export ZSPER_VENV="$PWD/.venv"
-./setup.sh --air
-```
+For automation, the source setup helper also honors `ZSPER_AIR_ROOT`,
+`ZSPER_AIR_NAME`, `ZSPER_PROFILE_REGISTRY`, and `ZSPER_VENV`.
 
 ## Verify Local Use
 
 Inspect the profile:
 
 ```bash
-PYTHONPATH=src python -m zsper profile show --profile air
+zsper profile show --profile air
 ```
 
 Run the profile doctor:
 
 ```bash
-PYTHONPATH=src python -m zsper profile doctor --profile air
+zsper profile doctor --profile air
 ```
 
 Ingest a local UTF-8 file:
 
 ```bash
-PYTHONPATH=src python -m zsper brain ingest --profile air ~/notes/flight.md
+zsper brain ingest --profile air ~/notes/flight.md
 ```
 
 Search local profile content:
 
 ```bash
-PYTHONPATH=src python -m zsper brain search --profile air flight
+zsper brain search --profile air flight
 ```
 
-URLs are rejected for air/offline ingest:
+URLs are rejected while the current `air-offline` mode is active:
 
 ```bash
-PYTHONPATH=src python -m zsper brain ingest --profile air https://example.com/doc.md
+zsper brain ingest --profile air https://example.com/doc.md
 ```
 
 ## Move To A Laptop
 
-Run `./setup.sh --air` after the repository has been copied or cloned onto the
-laptop. The generated `.venv/bin/zsper` wrapper contains local paths, so it
-should be created on the machine that will use it.
+Run the installer after the repository has been copied or cloned onto the laptop,
+then create/select the air profile explicitly:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh | bash
+zsper profile init --mode air-offline --root "$HOME/.local/share/zsper/profiles/air" --name air
+zsper profile use air
+```
+
+If you use `./setup.sh --air`, run it on the machine that will use it. The
+generated `.venv/bin/zsper` wrapper contains local paths.
 
 If the laptop should reuse an existing air profile, copy the profile root and
 registry together, then point the setup script at those paths:
@@ -138,7 +162,7 @@ Create a second profile with an explicit name:
 Then use that name in commands:
 
 ```bash
-PYTHONPATH=src python -m zsper brain search --profile air-laptop offline
+zsper brain search --profile air-laptop offline
 ```
 
 ### Search Misses A File
@@ -146,9 +170,9 @@ PYTHONPATH=src python -m zsper brain search --profile air-laptop offline
 Confirm the file is UTF-8 text and was ingested into the same registry:
 
 ```bash
-PYTHONPATH=src python -m zsper profile list
-PYTHONPATH=src python -m zsper brain ingest --profile air ./notes.md
-PYTHONPATH=src python -m zsper brain search --profile air notes
+zsper profile list
+zsper brain ingest --profile air ./notes.md
+zsper brain search --profile air notes
 ```
 
 The current MVP search is exact token search. Punctuation is treated as a

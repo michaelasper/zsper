@@ -5,10 +5,10 @@ usage() {
   cat <<'USAGE'
 Usage: ./setup.sh --air [options]
 
-Prepare this checkout for the current air/offline MVP.
+Prepare this checkout for the current portable/air MVP.
 
 Options:
-  --air              Prepare the air/offline profile.
+  --air              Prepare the portable/air profile.
   --root PATH        Profile root. Defaults to $XDG_DATA_HOME/zsper/profiles/air.
   --name NAME        Profile name. Defaults to air.
   --registry PATH    Profile registry. Defaults to $XDG_CONFIG_HOME/zsper/profiles.json.
@@ -134,6 +134,9 @@ if [[ "$create_venv" -eq 1 ]]; then
     printf 'exec "%s/bin/python" -m zsper "$@"\n' "$venv_path"
   } > "$wrapper"
   chmod +x "$wrapper"
+  zsper_cmd="$wrapper"
+else
+  zsper_cmd="PYTHONPATH=\"$repo_root/src\" \"$python_bin\" -m zsper"
 fi
 
 run_zsper() {
@@ -144,7 +147,7 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 profile_json="$tmp_dir/profile.json"
 
-echo "Preparing Zsper air/offline profile"
+echo "Preparing Zsper portable/air profile"
 echo "Repo: $repo_root"
 echo "Registry: $registry"
 echo "Requested root: $air_root"
@@ -214,6 +217,6 @@ echo "Profile: $profile_ref"
 echo "Root: $actual_root"
 echo
 echo "Try:"
-echo "  export ZSPER_PROFILE_REGISTRY=\"$registry\""
-echo "  PYTHONPATH=\"$repo_root/src\" python -m zsper brain ingest --profile $profile_ref /path/to/notes.md"
-echo "  PYTHONPATH=\"$repo_root/src\" python -m zsper brain search --profile $profile_ref offline"
+echo "  $zsper_cmd brain ingest --profile $profile_ref /path/to/notes.md"
+echo "  $zsper_cmd brain search --profile $profile_ref offline"
+echo "  $zsper_cmd profile use $profile_ref"

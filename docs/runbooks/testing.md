@@ -21,7 +21,7 @@ DAG is updated.
 | Security | `pytest tests/security -v` | policy, redaction, and isolation gates |
 | Web | `npm --prefix apps/brain-web test` | Next.js Brain web flows |
 | Full smoke | `zsper profile doctor --profile work && zsper code smoke --profile work && zsper brain status --profile work && zsper agent status --profile work` | full smoke verification |
-| Air/offline setup | `./setup.sh --air` | create or reuse the air profile and verify local ingest/search |
+| Portable/air setup helper | `./setup.sh --air` | create or reuse the air profile and verify local ingest/search |
 
 ## Foundation Checks
 
@@ -66,7 +66,7 @@ Purpose: verify architecture/runbook links and command documentation.
 pytest tests/unit/test_setup_air_script.py -v
 ```
 
-Purpose: verify the air/offline setup script against an isolated home and
+Purpose: verify the portable/air setup script against an isolated home and
 confirm it can be rerun safely.
 
 ## Later Milestone Notes

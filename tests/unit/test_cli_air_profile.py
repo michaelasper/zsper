@@ -110,3 +110,30 @@ def test_cli_air_profile_local_file_ingest_reaches_placeholder(
     assert search_code == 0
     assert "offline notes" in search_output.out
     assert str(local_file.resolve()) in search_output.out
+
+
+def test_cli_air_profile_can_use_configured_default(
+    capsys,
+    monkeypatch,
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
+    monkeypatch.setenv("ZSPER_CONFIG_FILE", str(tmp_path / "config.toml"))
+    root = tmp_path / "air-profile"
+    local_file = tmp_path / "notes.md"
+    local_file.write_text("portable compute notes", encoding="utf-8")
+    assert app(["profile", "init", "--mode", "air-offline", "--root", str(root)]) == 0
+    capsys.readouterr()
+    assert app(["profile", "use", "air"]) == 0
+    capsys.readouterr()
+
+    ingest_code = app(["brain", "ingest", str(local_file)])
+    ingest_output = capsys.readouterr()
+    search_code = app(["brain", "search", "portable compute"])
+    search_output = capsys.readouterr()
+
+    assert ingest_code == 0
+    assert "ingested document" in ingest_output.out
+    assert search_code == 0
+    assert "portable compute notes" in search_output.out

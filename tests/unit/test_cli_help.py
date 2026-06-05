@@ -20,7 +20,7 @@ GROUP_COMMANDS = {
 IMPLEMENTED_GROUP_COMMANDS = {
     "profile": GROUP_COMMANDS["profile"],
     "code": GROUP_COMMANDS["code"],
-    "brain": ("up", "down", "status"),
+    "brain": ("up", "down", "status", "ingest", "search"),
 }
 PLACEHOLDER_GROUP_COMMANDS = {
     group: tuple(

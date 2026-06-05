@@ -20,6 +20,7 @@ from zsper.brain.compose import (
     brain_ports_for_profile,
     render_brain_profile,
 )
+from zsper.config.user import UserConfigError, profile_ref_or_default
 from zsper.profiles import Profile, ProfileError, resolve_profile
 
 
@@ -36,8 +37,8 @@ STATUS_COMPONENT_LABELS: tuple[tuple[str, str], ...] = (
 
 def _resolve(namespace: Namespace) -> Profile | None:
     try:
-        return resolve_profile(namespace.profile)
-    except ProfileError as exc:
+        return resolve_profile(profile_ref_or_default(namespace.profile))
+    except (ProfileError, UserConfigError) as exc:
         print(str(exc), file=sys.stderr)
         return None
 

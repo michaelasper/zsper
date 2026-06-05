@@ -11,13 +11,14 @@ from zsper.code.adapters.pi import generate_pi_adapter
 from zsper.code.adapters.zed import generate_zed_adapter
 from zsper.code.llm_server_contract import LLMServerContract
 from zsper.config.model_endpoint import endpoints_for_profile
+from zsper.config.user import UserConfigError, profile_ref_or_default
 from zsper.profiles import ProfileError, resolve_profile
 
 
 def _resolve(namespace: Namespace):
     try:
-        return resolve_profile(namespace.profile)
-    except ProfileError as exc:
+        return resolve_profile(profile_ref_or_default(namespace.profile))
+    except (ProfileError, UserConfigError) as exc:
         print(str(exc), file=sys.stderr)
         return None
 

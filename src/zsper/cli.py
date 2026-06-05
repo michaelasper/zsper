@@ -9,7 +9,7 @@ from collections.abc import Sequence
 
 
 GROUP_COMMANDS: dict[str, tuple[str, ...]] = {
-    "profile": ("init", "list", "show", "doctor"),
+    "profile": ("init", "list", "show", "doctor", "use"),
     "code": (
         "start",
         "stop",
@@ -46,7 +46,7 @@ def _placeholder(namespace: argparse.Namespace) -> int:
         if policy_exit_code is not None:
             return policy_exit_code
 
-    profile = namespace.profile or "default"
+    profile = _profile_ref_for_command(namespace.profile, missing_ok=True) or "unconfigured"
     print(
         f"zsper {namespace.group} {namespace.command} is not implemented "
         f"in this milestone (profile={profile}).",
@@ -88,11 +88,12 @@ def _profile_list(namespace: argparse.Namespace) -> int:
 
 
 def _profile_show(namespace: argparse.Namespace) -> int:
+    from zsper.config.user import UserConfigError, profile_ref_or_default
     from zsper.profiles import ProfileError, resolve_profile
 
     try:
-        profile = resolve_profile(namespace.profile)
-    except ProfileError as exc:
+        profile = resolve_profile(profile_ref_or_default(namespace.profile))
+    except (ProfileError, UserConfigError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
@@ -101,11 +102,12 @@ def _profile_show(namespace: argparse.Namespace) -> int:
 
 
 def _profile_doctor(namespace: argparse.Namespace) -> int:
+    from zsper.config.user import UserConfigError, profile_ref_or_default
     from zsper.profiles import ProfileError, profile_doctor
 
     try:
-        report = profile_doctor(namespace.profile)
-    except ProfileError as exc:
+        report = profile_doctor(profile_ref_or_default(namespace.profile))
+    except (ProfileError, UserConfigError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
@@ -118,16 +120,48 @@ def _profile_doctor(namespace: argparse.Namespace) -> int:
     return 1
 
 
+def _profile_use(namespace: argparse.Namespace) -> int:
+    from zsper.config.user import UserConfigError, set_default_profile
+    from zsper.profiles import ProfileError, resolve_profile
+
+    try:
+        profile = resolve_profile(namespace.profile_name)
+        config_path = set_default_profile(profile.name)
+    except (ProfileError, UserConfigError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(f"default profile set to {profile.name}")
+    print(f"config: {config_path}")
+    return 0
+
+
+def _profile_ref_for_command(
+    explicit_profile_ref: str | None,
+    *,
+    missing_ok: bool = False,
+) -> str | None:
+    from zsper.config.user import UserConfigError, profile_ref_or_default
+
+    try:
+        return profile_ref_or_default(explicit_profile_ref)
+    except UserConfigError:
+        if missing_ok:
+            return None
+        raise
+
+
 def _maybe_reject_ingest_by_profile_policy(namespace: argparse.Namespace) -> int | None:
+    from zsper.config.user import UserConfigError
     from zsper.profiles import ProfileError, resolve_profile
     from zsper.security.network_policy import check_network_policy, looks_like_url
 
-    if not namespace.profile or not namespace.path_or_url:
+    if not namespace.path_or_url:
         return None
 
     try:
-        profile = resolve_profile(namespace.profile)
-    except ProfileError:
+        profile = resolve_profile(_profile_ref_for_command(namespace.profile))
+    except (ProfileError, UserConfigError):
         return None
 
     action = "url-ingest" if looks_like_url(namespace.path_or_url) else "local-file-read"
@@ -145,11 +179,15 @@ def _maybe_reject_ingest_by_profile_policy(namespace: argparse.Namespace) -> int
 
 
 def _brain_ingest(namespace: argparse.Namespace) -> int:
+    from zsper.config.user import UserConfigError
     from zsper.brain.offline_store import BrainOfflineError, ingest_local_file
     from zsper.profiles import ProfileError, resolve_profile
 
     try:
-        profile = resolve_profile(namespace.profile)
+        profile = resolve_profile(_profile_ref_for_command(namespace.profile))
+    except UserConfigError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     except ProfileError:
         return _placeholder(namespace)
 
@@ -171,11 +209,15 @@ def _brain_ingest(namespace: argparse.Namespace) -> int:
 
 
 def _brain_search(namespace: argparse.Namespace) -> int:
+    from zsper.config.user import UserConfigError
     from zsper.brain.offline_store import BrainOfflineError, search_local_files
     from zsper.profiles import ProfileError, resolve_profile
 
     try:
-        profile = resolve_profile(namespace.profile)
+        profile = resolve_profile(_profile_ref_for_command(namespace.profile))
+    except UserConfigError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     except ProfileError:
         return _placeholder(namespace)
 
@@ -206,6 +248,10 @@ def _configure_reserved_signature(
         command_parser.add_argument("--mode", choices=PROFILE_MODES, required=True)
         command_parser.add_argument("--root", required=True)
         command_parser.add_argument("--name")
+        return
+
+    if group == "profile" and command == "use":
+        command_parser.add_argument("profile_name")
         return
 
     if group == "brain" and command == "ingest":
@@ -242,6 +288,7 @@ def _profile_handler(command: str):
         "list": _profile_list,
         "show": _profile_show,
         "doctor": _profile_doctor,
+        "use": _profile_use,
     }[command]
 
 

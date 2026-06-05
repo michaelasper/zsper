@@ -5,7 +5,9 @@
 </p>
 
 ```bash
-./setup.sh --air
+curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh | bash
+zsper profile init --mode work --root "$HOME/.local/share/zsper/profiles/work"
+zsper profile use work
 ```
 
 ## TL;DR
@@ -14,12 +16,13 @@
 and agent state until it is hard to trust what data moved where.
 
 **Solution:** Zsper gives each workflow a profile boundary, a CLI surface, and
-profile-local Brain storage. The current MVP is focused on getting the
-`air` profile useful before the full platform DAG is complete.
+profile-local Brain storage. The current MVP keeps install profile-neutral:
+create work, personal, or portable/air profiles after the CLI is installed.
 
 | Feature | Benefit |
 | --- | --- |
-| Air/offline setup | Prepare an isolated travel profile with one command. |
+| Profile-neutral install | Install the CLI without silently choosing a profile. |
+| Portable/air setup | Prepare an isolated lower-compute travel profile explicitly. |
 | Profile-local Brain files | Ingest and search UTF-8 local files without hosted calls. |
 | Explicit boundaries | Keep product code in `zsper` and model serving in `llm-server`. |
 | Append-only ledgers | Record Brain file mutations in profile-local JSONL. |
@@ -27,61 +30,85 @@ profile-local Brain storage. The current MVP is focused on getting the
 ## Quick Start
 
 ```bash
-# 1. Prepare the air/offline profile.
-./setup.sh --air
+# 1. Install the CLI into your home directory.
+curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh | bash
 
-# 2. Use the generated profile registry in this shell if needed.
-export ZSPER_PROFILE_REGISTRY="$HOME/.config/zsper/profiles.json"
+# 2. Create a profile. Installation does not create one for you.
+zsper profile init --mode work --root "$HOME/.local/share/zsper/profiles/work"
 
-# 3. Inspect the air profile.
-PYTHONPATH=src python -m zsper profile show --profile air
+# 3. Choose the default profile for commands that omit --profile.
+zsper profile use work
 
 # 4. Ingest a local UTF-8 file.
-PYTHONPATH=src python -m zsper brain ingest --profile air ~/notes/flight.md
+zsper brain ingest ~/notes/flight.md
 
 # 5. Search local profile content.
-PYTHONPATH=src python -m zsper brain search --profile air offline
+zsper brain search offline
 
 # 6. Verify the profile layout.
-PYTHONPATH=src python -m zsper profile doctor --profile air
+zsper profile doctor
 ```
 
-For the full air/offline workflow, use
+For the portable/air workflow, use
 [docs/runbooks/air-offline.md](docs/runbooks/air-offline.md).
 
 ## What Works Now
 
 | Workflow | Example |
 | --- | --- |
-| Initialise profiles | `PYTHONPATH=src python -m zsper profile init --mode air-offline --root "$HOME/.local/share/zsper/profiles/air"` |
-| List profiles | `PYTHONPATH=src python -m zsper profile list` |
-| Inspect a profile | `PYTHONPATH=src python -m zsper profile show --profile air` |
-| Doctor a profile | `PYTHONPATH=src python -m zsper profile doctor --profile air` |
-| Ingest local text | `PYTHONPATH=src python -m zsper brain ingest --profile air ./notes.md` |
-| Search local text | `PYTHONPATH=src python -m zsper brain search --profile air notes` |
+| Install CLI | `curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh \| bash` |
+| Initialise profiles | `zsper profile init --mode work --root "$HOME/.local/share/zsper/profiles/work"` |
+| Choose default profile | `zsper profile use work` |
+| List profiles | `zsper profile list` |
+| Inspect a profile | `zsper profile show` |
+| Doctor a profile | `zsper profile doctor` |
+| Ingest local text | `zsper brain ingest ./notes.md` |
+| Search local text | `zsper brain search notes` |
 
 `./setup.sh --air` creates a project virtual environment by default, writes a
 small `zsper` wrapper into `.venv/bin/`, initialises or reuses the air profile,
 ingests a readiness note, and verifies offline search. It does not download
-models or call hosted APIs.
+models or call hosted APIs. It is a repository-local helper; the polished
+installer is `install.sh`.
 
 ## Installation And Setup
 
-### Air/offline setup
+### Polished install
 
 ```bash
-./setup.sh --air
+curl -fsSL https://raw.githubusercontent.com/michaelasper/zsper/main/install.sh | bash
 ```
 
-Use this on the machine that will run offline. It is safe to rerun; existing air
-profiles are reused.
+The installer clones or updates Zsper under `~/.local/share/zsper/app`, creates
+a managed virtual environment under `~/.local/share/zsper/venv`, writes
+`~/.local/bin/zsper`, and creates home-scoped config files under
+`~/.config/zsper`. It does not create a profile or set a default.
 
-### Source checkout
+After installing, create the profile you want:
+
+```bash
+zsper profile init --mode work --root "$HOME/.local/share/zsper/profiles/work"
+zsper profile use work
+```
+
+For a portable/air profile on a laptop or lower-compute machine:
+
+```bash
+zsper profile init --mode air-offline --root "$HOME/.local/share/zsper/profiles/air" --name air
+zsper profile use air
+```
+
+The current MVP mode name is `air-offline` because hosted model, search, and
+extraction calls are blocked until a local laptop runtime is configured. The
+profile itself is not the install default.
+
+### Source checkout for development
 
 ```bash
 git clone https://github.com/michaelasper/zsper.git
 cd zsper
-PYTHONPATH=src python -m zsper --help
+python -m pip install -e .
+zsper --help
 ```
 
 ### Editable package install
@@ -92,8 +119,12 @@ zsper --help
 ```
 
 Use the editable install when network and Python packaging dependencies are
-available. The air setup script keeps the current MVP usable from source when
-offline packaging is not ready.
+available. The air setup script keeps the current MVP usable from source on a
+travel machine:
+
+```bash
+./setup.sh --air
+```
 
 ## Repository Boundary
 
@@ -119,7 +150,7 @@ for the allowed and disallowed dependency forms.
 | Product direction | [docs/zsper-local-ai-platform-ultimate-spec.md](docs/zsper-local-ai-platform-ultimate-spec.md) |
 | Implementation order | [docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md](docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md) |
 | Platform overview | [docs/architecture/platform-overview.md](docs/architecture/platform-overview.md) |
-| Air/offline setup | [docs/runbooks/air-offline.md](docs/runbooks/air-offline.md) |
+| Portable/air setup | [docs/runbooks/air-offline.md](docs/runbooks/air-offline.md) |
 | Local development | [docs/runbooks/local-development.md](docs/runbooks/local-development.md) |
 | Test commands | [docs/runbooks/testing.md](docs/runbooks/testing.md) |
 
@@ -134,13 +165,15 @@ for the allowed and disallowed dependency forms.
 
 ## Troubleshooting
 
-### `./setup.sh --air` says Python is too old
+### `install.sh` or `./setup.sh --air` says Python is too old
 
 Install Python 3.12 or newer, then rerun:
 
 ```bash
 PYTHON=python3.12 ./setup.sh --air
 ```
+
+For the installer, make sure `python3.12` is on `PATH`.
 
 ### The `air` profile already exists
 
@@ -156,7 +189,7 @@ separate air profile root, choose a different name and root:
 Confirm the file was ingested into the same profile registry:
 
 ```bash
-PYTHONPATH=src python -m zsper profile list
-PYTHONPATH=src python -m zsper brain ingest --profile air ./notes.md
-PYTHONPATH=src python -m zsper brain search --profile air notes
+zsper profile list
+zsper brain ingest --profile air ./notes.md
+zsper brain search --profile air notes
 ```
