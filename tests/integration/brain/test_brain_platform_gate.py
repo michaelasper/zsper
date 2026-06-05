@@ -48,10 +48,13 @@ def _env_values(path: Path) -> dict[str, str]:
 
 
 def _rendered_api_env(env: dict[str, str], registry_path: Path) -> dict[str, str]:
-    return {
+    api_env = {
         **env,
         "ZSPER_PROFILE_REGISTRY": str(registry_path),
     }
+    if api_env.get("ZSPER_PROFILE_ROOT") == "/profile":
+        api_env["ZSPER_PROFILE_ROOT"] = api_env["ZSPER_HOST_PROFILE_ROOT"]
+    return api_env
 
 
 @pytest.mark.integration
@@ -79,6 +82,10 @@ def test_brain_platform_outputs_are_profile_isolated(
 
     assert work_env["ZSPER_PROFILE_ID"] == "work"
     assert personal_env["ZSPER_PROFILE_ID"] == "personal"
+    assert work_env["ZSPER_HOST_PROFILE_ROOT"] == str(Path(work.root))
+    assert personal_env["ZSPER_HOST_PROFILE_ROOT"] == str(Path(personal.root))
+    assert work_env["ZSPER_PROFILE_ROOT"] == "/profile"
+    assert personal_env["ZSPER_PROFILE_ROOT"] == "/profile"
     assert work_env["POSTGRES_DB"] == "zsper_work"
     assert personal_env["POSTGRES_DB"] == "zsper_personal"
     assert work_env["REDIS_KEY_PREFIX"] == "zsper:work:"
@@ -90,6 +97,8 @@ def test_brain_platform_outputs_are_profile_isolated(
     assert "zsper_personal_postgres_data" in personal_compose
     assert "zsper_work_redis_runtime" in work_compose
     assert "zsper_personal_redis_runtime" in personal_compose
+    assert f"{Path(work.root)}:/profile" in work_compose
+    assert f"{Path(personal.root)}:/profile" in personal_compose
     assert str(Path(work.root) / "runtime" / "brain") in work_compose
     assert str(Path(personal.root) / "runtime" / "brain") in personal_compose
 
@@ -148,5 +157,5 @@ def test_brain_platform_outputs_are_profile_isolated(
         "http://honcho:8080"
     )
     assert work_status["components"]["brain_api"]["details"]["url"] == (
-        "http://brain-api:8000"
+        "http://brain-api:8000/api/ping"
     )

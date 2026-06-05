@@ -6,7 +6,7 @@ import json
 import socket
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping, Protocol
+from typing import Mapping, Protocol
 from urllib.error import URLError
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
@@ -174,7 +174,7 @@ class DefaultServiceProbes:
             return ComponentStatus(
                 status="unknown",
                 message="redis package is not installed in this environment",
-                details={"url": redis.url, "key_prefix": redis.key_prefix},
+                details=_redis_details(redis),
             )
 
         try:
@@ -184,12 +184,12 @@ class DefaultServiceProbes:
             return ComponentStatus(
                 status="fail",
                 message=f"redis check failed: {exc}",
-                details={"url": redis.url, "key_prefix": redis.key_prefix},
+                details=_redis_details(redis),
             )
         return ComponentStatus(
             status="pass",
             message="redis reachable",
-            details={"url": redis.url, "key_prefix": redis.key_prefix},
+            details=_redis_details(redis),
         )
 
     def check_http(self, component: str, url: str) -> ComponentStatus:
@@ -223,6 +223,37 @@ def redact_url_secret(value: str) -> str:
     port = f":{parts.port}" if parts.port else ""
     netloc = f"{username}:***@{host}{port}"
     return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+
+
+def _redis_details(redis: RedisRuntimeConfig) -> dict[str, object]:
+    return {"url": redact_url_secret(redis.url), "key_prefix": redis.key_prefix}
+
+
+def _redact_status_url(status: ComponentStatus) -> ComponentStatus:
+    details = dict(status.details)
+    url = details.get("url")
+    if isinstance(url, str):
+        details["url"] = redact_url_secret(url)
+    return ComponentStatus(
+        status=status.status,
+        message=status.message,
+        details=details,
+    )
+
+
+def _brain_api_ping_url(base_url: str | None) -> str | None:
+    if not base_url:
+        return None
+
+    parts = urlsplit(base_url.rstrip("/"))
+    path = parts.path.rstrip("/")
+    if path.endswith("/api/ping"):
+        ping_path = path
+    elif path.endswith("/api"):
+        ping_path = f"{path}/ping"
+    else:
+        ping_path = f"{path}/api/ping" if path else "/api/ping"
+    return urlunsplit((parts.scheme, parts.netloc, ping_path, "", ""))
 
 
 def _env_value(environ: Mapping[str, str], *keys: str) -> str | None:
@@ -584,7 +615,9 @@ def build_health_report(
         "profile_schema": _profile_schema_status(context.profile),
         "writable_dirs": _writable_dirs_status(context.profile),
         "database": _coerce_status(service_probes.check_database(context.database)),
-        "redis": _coerce_status(service_probes.check_redis(context.redis)),
+        "redis": _redact_status_url(
+            _coerce_status(service_probes.check_redis(context.redis))
+        ),
         "searxng": _searxng_status(context, service_probes),
         "honcho": _local_http_status(
             component="honcho",
@@ -600,7 +633,7 @@ def build_health_report(
         ),
         "brain_api": _local_http_status(
             component="brain_api",
-            url=context.brain_api_url,
+            url=_brain_api_ping_url(context.brain_api_url),
             context=context,
             probes=service_probes,
             missing_status="pass",
@@ -672,7 +705,7 @@ def build_settings_report(context: ApiProfileContext) -> dict[str, object]:
         },
         "redis": {
             "profile_id": context.profile_id,
-            "url": context.redis.url,
+            "url": redact_url_secret(context.redis.url),
             "key_prefix": context.redis.key_prefix,
         },
         "model": {

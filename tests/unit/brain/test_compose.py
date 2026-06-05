@@ -42,7 +42,14 @@ def test_brain_compose_renders_profile_local_files(
 
     assert f"POSTGRES_DB={profile.database_name}" in env_text
     assert f"ZSPER_PROFILE_ID={profile.name}" in env_text
-    assert f"ZSPER_PROFILE_ROOT={root}" in env_text
+    assert f"ZSPER_HOST_PROFILE_ROOT={root}" in env_text
+    assert "ZSPER_PROFILE_ROOT=/profile" in env_text
+    assert f"ZSPER_HOST_BRAIN_ROOT={root / 'brain'}" in env_text
+    assert "ZSPER_BRAIN_ROOT=/profile/brain" in env_text
+    assert f"ZSPER_HOST_RUNTIME_BRAIN_ROOT={root / 'runtime' / 'brain'}" in env_text
+    assert "ZSPER_RUNTIME_BRAIN_ROOT=/profile/runtime/brain" in env_text
+    assert f"- {root}:/profile" in compose_text
+    assert f"- {root}/brain:/profile/brain" not in compose_text
     assert f"{root}/runtime/brain/postgres" in compose_text
     assert "context: ${ZSPER_REPO_ROOT}" in compose_text
     assert "dockerfile: services/brain-api/Dockerfile" in compose_text

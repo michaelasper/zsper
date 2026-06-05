@@ -81,9 +81,7 @@ services:
     ports:
       - "127.0.0.1:${BRAIN_API_PORT}:8000"
     volumes:
-      - {{ PROFILE_ROOT }}/brain:/profile/brain
-      - {{ PROFILE_ROOT }}/agent-runs:/profile/agent-runs
-      - {{ PROFILE_ROOT }}/logs:/profile/logs
+      - {{ PROFILE_ROOT }}:/profile
 
   brain-web:
     build:

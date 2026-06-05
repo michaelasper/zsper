@@ -11,6 +11,11 @@ from zsper.brain.api import ApiProfileContext, ServiceProbes, build_health_repor
 router = APIRouter()
 
 
+@router.get("/api/ping")
+def read_ping() -> dict[str, str]:
+    return {"status": "ok", "service": "brain-api"}
+
+
 @router.get("/api/health")
 def read_health(
     context: ApiProfileContext = Depends(get_profile_context),

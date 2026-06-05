@@ -101,6 +101,7 @@ def test_health_status_and_settings_report_profile_and_local_service_checks(
     assert health_body["components"]["web_ui"]["status"] == "pass"
     assert health_body["components"]["forbidden_hosted_config"]["status"] == "pass"
     assert ("local_model_models", "http://127.0.0.1:9127/v1/models") in probes.http_urls
+    assert ("brain_api", "http://127.0.0.1:7420/api/ping") in probes.http_urls
 
     assert status.status_code == 200
     status_body = status.json()
@@ -116,6 +117,37 @@ def test_health_status_and_settings_report_profile_and_local_service_checks(
     assert settings_body["model"]["base_url"] == "http://127.0.0.1:9127/v1"
     assert settings_body["search"]["searxng_enabled"] is True
     assert settings_body["hosted_config"]["status"] == "pass"
+
+
+def test_health_and_settings_redact_redis_credentials(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    profile = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+    client = TestClient(
+        create_app(
+            environ=_service_env(
+                profile,
+                isolated_registry_path,
+                REDIS_URL="redis://:redis-secret@127.0.0.1:6379/0",
+            ),
+            service_probes=FakeServiceProbes(),
+        )
+    )
+
+    health = client.get("/api/health", headers={"X-Zsper-Profile-Id": "work"}).json()
+    settings = client.get("/api/settings", headers={"X-Zsper-Profile-Id": "work"}).json()
+
+    serialized = json.dumps({"health": health, "settings": settings})
+    assert "redis-secret" not in serialized
+    assert settings["redis"]["url"] == "redis://:***@127.0.0.1:6379/0"
+    assert health["components"]["redis"]["details"]["url"] == (
+        "redis://:***@127.0.0.1:6379/0"
+    )
 
 
 def test_offline_profile_reports_searxng_disabled_not_failed(

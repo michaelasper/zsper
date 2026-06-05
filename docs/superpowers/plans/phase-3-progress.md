@@ -55,6 +55,15 @@ Milestone: M3 Brain Platform
   verification: `pytest tests/unit/brain/test_compose.py tests/integration/brain/test_brain_platform_gate.py -q`
   -> 3 passed; `npm --prefix apps/brain-web test` -> 5 passed; `npm --prefix
   apps/brain-web run build` -> passed.
+- 2026-06-05: Out-of-band post-gate hardening fixed Brain API container profile
+  resolution, Brain web container binding, Brain API self-check routing, and
+  Redis URL redaction in health/settings reports, plus made the Brain web build
+  clean stale `.next` artifacts before production compilation. Focused
+  verification:
+  `pytest tests/unit/brain/test_compose.py tests/unit/brain/test_api_skeleton.py tests/unit/brain/test_health_status_settings.py tests/unit/brain/test_web_package.py tests/unit/brain/test_cli.py -q`
+  plus the integration gate slice -> 21 passed, 1 FastAPI/Starlette TestClient
+  deprecation warning; `npm
+  --prefix apps/brain-web test` -> 5 passed.
 - Later parallelization point: after `BRAIN-006`, `BRAIN-008` can proceed
   independently from `BRAIN-007` and `BRAIN-009` as long as file ownership stays
   separate.

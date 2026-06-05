@@ -164,6 +164,6 @@ def test_brain_status_reports_profile_scoped_component_statuses(
     assert "local model endpoint: pass" in captured.out
     assert ("searxng", "http://127.0.0.1:7424") in probes.http_urls
     assert ("honcho", "http://127.0.0.1:7425") in probes.http_urls
-    assert ("brain_api", "http://127.0.0.1:7420") in probes.http_urls
+    assert ("brain_api", "http://127.0.0.1:7420/api/ping") in probes.http_urls
     assert ("web_ui", "http://127.0.0.1:7421") in probes.http_urls
     assert ("local_model_models", "http://127.0.0.1:9127/v1/models") in probes.http_urls

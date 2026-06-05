@@ -28,6 +28,15 @@ def _service_env(profile, registry_path: Path) -> dict[str, str]:
     }
 
 
+def test_api_ping_does_not_require_profile_context() -> None:
+    client = TestClient(create_app(environ={}))
+
+    response = client.get("/api/ping")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "service": "brain-api"}
+
+
 def test_api_app_imports_and_serves_profile_aware_test_client(
     tmp_path: Path,
     isolated_registry_path: Path,
