@@ -264,7 +264,7 @@ run mkdir -p "$bin_dir"
 checkout_repo
 run "$python_bin" -m venv "$venv_dir"
 run "$venv_dir/bin/python" -m pip install --upgrade pip
-run "$venv_dir/bin/python" -m pip install -e "$app_dir"
+run "$venv_dir/bin/python" -m pip install -e "$app_dir[api,database,rag]"
 write_default_config_files
 write_wrapper
 print_next_steps

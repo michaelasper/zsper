@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS notes (
   source_document_id TEXT,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
   search_vector TSVECTOR GENERATED ALWAYS AS (
-    to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(body, '') || ' ' || array_to_string(tags, ' '))
+    to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(body, ''))
   ) STORED,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -260,6 +260,8 @@ CREATE INDEX IF NOT EXISTS idx_notes_profile_updated_at
   ON notes (profile_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notes_search_vector
   ON notes USING gin (search_vector);
+CREATE INDEX IF NOT EXISTS idx_notes_tags
+  ON notes USING gin (tags);
 
 CREATE INDEX IF NOT EXISTS idx_tasks_profile_status
   ON tasks (profile_id, status, updated_at DESC);

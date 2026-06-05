@@ -156,6 +156,9 @@ def test_schema_sql_includes_vector_index_contract() -> None:
 def test_schema_sql_has_full_text_and_vector_indexes() -> None:
     sql = render_schema_sql()
 
+    assert "array_to_string(tags" not in sql
+    assert "idx_notes_tags" in sql
+
     for table in (
         "notes",
         "tasks",

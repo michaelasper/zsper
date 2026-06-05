@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -273,6 +274,31 @@ def test_postgres_store_initializes_schema_and_persists_document_chunks_citation
     )
     assert chunk_params[:3] == (profile.name, chunk.id, document.id)
     assert anchor_params[:4] == (profile.name, anchor.id, document.id, chunk.id)
+
+
+def test_postgres_store_normalizes_timestamptz_reads_to_iso8601(
+    tmp_path: Path,
+    isolated_registry_path: Path,
+) -> None:
+    profile = initialize_profile(
+        mode="work",
+        root=tmp_path / "work",
+        registry_path=isolated_registry_path,
+    )
+    connection_factory = _FakePostgresConnectionFactory()
+    store = ProfileRagStore.postgres(connection_factory)
+    document = _document(profile.name)
+
+    store.upsert_document(profile, document)
+    stored_row = connection_factory.connection.documents[(profile.name, document.id)]
+    stored_row["created_at"] = datetime(2026, 6, 4, 12, 0, 0, tzinfo=UTC)
+    stored_row["updated_at"] = datetime(2026, 6, 4, 12, 0, 1, tzinfo=UTC)
+
+    actual = store.get_document(profile, document.id)
+
+    assert actual is not None
+    assert actual.created_at == "2026-06-04T12:00:00+00:00"
+    assert actual.updated_at == "2026-06-04T12:00:01+00:00"
 
 
 def test_postgres_store_keeps_profile_isolation_and_document_ledger(

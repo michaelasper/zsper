@@ -1,5 +1,6 @@
 import os
 import subprocess
+import tomllib
 from pathlib import Path
 
 
@@ -71,3 +72,16 @@ def test_install_script_has_valid_bash_syntax() -> None:
     )
 
     assert result.returncode == 0, result.stderr
+
+
+def test_install_script_installs_brain_and_rag_runtime_extras() -> None:
+    script = INSTALL_SCRIPT.read_text(encoding="utf-8")
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    assert '"$app_dir[api,database,rag]"' in script
+
+    optional_dependencies = pyproject["project"]["optional-dependencies"]
+    assert "fastapi>=0.115" in optional_dependencies["api"]
+    assert "psycopg[binary]>=3.2" in optional_dependencies["database"]
+    assert "sentence-transformers>=3.0" in optional_dependencies["rag"]
+    assert "docling>=2.0" in optional_dependencies["rag"]

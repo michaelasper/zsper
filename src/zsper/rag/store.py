@@ -6,6 +6,7 @@ import json
 import sqlite3
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -357,8 +358,8 @@ class ProfileRagStore:
                   metadata::text AS metadata_json,
                   content_hash,
                   parser,
-                  created_at::text AS created_at,
-                  updated_at::text AS updated_at
+                  created_at,
+                  updated_at
                 FROM documents
                 WHERE profile_id = %s AND id = %s
                 """,
@@ -395,8 +396,8 @@ class ProfileRagStore:
                   metadata::text AS metadata_json,
                   content_hash,
                   parser,
-                  created_at::text AS created_at,
-                  updated_at::text AS updated_at
+                  created_at,
+                  updated_at
                 FROM documents
                 WHERE profile_id = %s
                 ORDER BY created_at, id
@@ -598,9 +599,17 @@ def _document_from_row(row: Mapping[str, Any] | sqlite3.Row) -> Document:
         metadata=_json_load(row["metadata_json"]),
         content_hash=row["content_hash"],
         parser=row["parser"],
-        created_at=row["created_at"],
-        updated_at=row["updated_at"],
+        created_at=_timestamp_text(row["created_at"]),
+        updated_at=_timestamp_text(row["updated_at"]),
     )
+
+
+def _timestamp_text(value: Any) -> str:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, str):
+        return value
+    raise RagStoreError("stored document timestamp must be text or datetime")
 
 
 def _chunk_from_row(row: Mapping[str, Any] | sqlite3.Row) -> DocumentChunk:
