@@ -8,9 +8,9 @@ Milestone: M4 Documents, RAG, And Citations
 
 | Task | Title | Dependencies | Status | Verification | Review | Commit |
 | --- | --- | --- | --- | --- | --- | --- |
-| RAG-001 | RAG Store And Models | BRAIN-002, BRAIN-004, GATE-001 | Complete | `pytest tests/unit/rag/test_store.py tests/unit/test_phase4_progress_doc.py -q` -> 8 passed | PASS | Pending |
-| RAG-002 | Raw Asset Capture | RAG-001 | Pending | Pending | Pending | Pending |
-| RAG-003 | RAG Policy Gate | SEC-002, RAG-001 | Pending | Pending | Pending | Pending |
+| RAG-001 | RAG Store And Models | BRAIN-002, BRAIN-004, GATE-001 | Complete | `pytest tests/unit/rag/test_store.py tests/unit/test_phase4_progress_doc.py -q` -> 8 passed | PASS | `feat(rag): add document store` |
+| RAG-002 | Raw Asset Capture | RAG-001 | Complete | `pytest tests/unit/rag/test_assets.py -q` -> 3 passed | PASS | `feat(rag): add asset capture and policy gates` |
+| RAG-003 | RAG Policy Gate | SEC-002, RAG-001 | Complete | `pytest tests/unit/rag/test_policy.py -q` -> 10 passed | PASS | `feat(rag): add asset capture and policy gates` |
 | RAG-004 | Parser Selector And Text Parser | RAG-002, RAG-003 | Pending | Pending | Pending | Pending |
 | RAG-005 | Docling Parser Adapter | RAG-004 | Pending | Pending | Pending | Pending |
 | RAG-006 | Local Web Capture And Research Bridge | RAG-003, RAG-004 | Pending | Pending | Pending | Pending |
@@ -42,6 +42,14 @@ Milestone: M4 Documents, RAG, And Citations
   TestClient deprecation warning; `ruff check .` -> passed.
 - Parallelization point: after `RAG-001`, dispatch `RAG-002` and `RAG-003` in
   parallel because raw asset capture and policy gates have disjoint files.
+- 2026-06-05: Implemented `RAG-002` and `RAG-003` in parallel after
+  `RAG-001`. `RAG-002` added immutable profile-local raw asset capture,
+  content hashing, document metadata, dedupe for unchanged local files, and
+  traversal protection. `RAG-003` added policy gates for URL ingest, SearXNG,
+  hosted extraction/model/search dependencies, and model downloads. Both
+  reviewer passes returned PASS. Local verification:
+  `pytest tests/unit/rag/test_assets.py tests/unit/rag/test_policy.py tests/unit/rag/test_store.py -q`
+  -> 20 passed.
 - Parallelization point: after `RAG-007`, dispatch `RAG-008`, `RAG-009`, and
   `RAG-010` in parallel where write scopes remain disjoint.
 

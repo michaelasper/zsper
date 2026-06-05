@@ -1,4 +1,4 @@
-"""RAG document models and profile-scoped stores."""
+"""RAG document models, policy gates, and profile-scoped stores."""
 
 from zsper.rag.models import (
     DOCUMENT_PARSERS,
@@ -9,6 +9,7 @@ from zsper.rag.models import (
     EmbeddingMetadata,
     RagModelError,
 )
+from zsper.rag.policy import HOSTED_RAG_ACTIONS, RagPolicyError, RagPolicyGate
 from zsper.rag.store import (
     POSTGRES_RAG_SCHEMA_SQL,
     SQLITE_RAG_SCHEMA_SQL,
@@ -20,6 +21,7 @@ from zsper.rag.store import (
 __all__ = [
     "DOCUMENT_PARSERS",
     "DOCUMENT_SOURCE_TYPES",
+    "HOSTED_RAG_ACTIONS",
     "POSTGRES_RAG_SCHEMA_SQL",
     "SQLITE_RAG_SCHEMA_SQL",
     "CitationAnchor",
@@ -28,6 +30,8 @@ __all__ = [
     "EmbeddingMetadata",
     "ProfileRagStore",
     "RagModelError",
+    "RagPolicyError",
+    "RagPolicyGate",
     "RagStoreError",
     "replay_document_metadata",
 ]
