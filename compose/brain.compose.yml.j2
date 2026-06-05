@@ -1,0 +1,104 @@
+name: zsper-brain-{{ PROFILE_SLUG }}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: zsper-{{ PROFILE_SLUG }}-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
+    volumes:
+      - {{ PROFILE_ROOT }}/runtime/brain/postgres:/var/lib/postgresql/data
+      - {{ PROFILE_ROOT }}/brain/schema.sql:/docker-entrypoint-initdb.d/0001_initial.sql:ro
+      - zsper_{{ PROFILE_SLUG }}_postgres_data:/zsper-profile-volume-marker
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: zsper-{{ PROFILE_SLUG }}-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT}:6379"
+    volumes:
+      - {{ PROFILE_ROOT }}/runtime/brain/redis:/data
+      - zsper_{{ PROFILE_SLUG }}_redis_runtime:/zsper-profile-volume-marker
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: zsper-{{ PROFILE_SLUG }}-searxng
+    restart: unless-stopped
+    environment:
+      BASE_URL: http://127.0.0.1:${SEARXNG_PORT}/
+      INSTANCE_NAME: zsper-{{ PROFILE_SLUG }}
+    ports:
+      - "127.0.0.1:${SEARXNG_PORT}:8080"
+    volumes:
+      - {{ PROFILE_ROOT }}/runtime/brain/searxng:/etc/searxng
+
+  honcho:
+    image: ${HONCHO_IMAGE}
+    container_name: zsper-{{ PROFILE_SLUG }}-honcho
+    restart: unless-stopped
+    environment:
+      ZSPER_PROFILE_ID: ${ZSPER_PROFILE_ID}
+      ZSPER_PROFILE_ROOT: ${ZSPER_PROFILE_ROOT}
+    ports:
+      - "127.0.0.1:${HONCHO_PORT}:8080"
+    volumes:
+      - {{ PROFILE_ROOT }}/runtime/brain/honcho:/data
+
+  brain-api:
+    build:
+      context: ${ZSPER_REPO_ROOT}/services/brain-api
+    container_name: zsper-{{ PROFILE_SLUG }}-brain-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      searxng:
+        condition: service_started
+      honcho:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${BRAIN_API_PORT}:8000"
+    volumes:
+      - {{ PROFILE_ROOT }}/brain:/profile/brain
+      - {{ PROFILE_ROOT }}/agent-runs:/profile/agent-runs
+      - {{ PROFILE_ROOT }}/logs:/profile/logs
+
+  brain-web:
+    build:
+      context: ${ZSPER_REPO_ROOT}/apps/brain-web
+    container_name: zsper-{{ PROFILE_SLUG }}-brain-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      brain-api:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${BRAIN_WEB_PORT}:3000"
+
+volumes:
+  zsper_{{ PROFILE_SLUG }}_postgres_data:
+    name: zsper_{{ PROFILE_SLUG }}_postgres_data
+  zsper_{{ PROFILE_SLUG }}_redis_runtime:
+    name: zsper_{{ PROFILE_SLUG }}_redis_runtime

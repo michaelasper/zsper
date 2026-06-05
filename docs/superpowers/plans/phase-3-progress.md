@@ -1,0 +1,49 @@
+# Phase 3 Progress
+
+Source plan: `docs/superpowers/plans/2026-06-04-zsper-platform-implementation-dag.md`
+
+Milestone: M3 Brain Platform
+
+## Status
+
+| Task | Title | Dependencies | Status | Verification | Review | Commit |
+| --- | --- | --- | --- | --- | --- | --- |
+| BRAIN-001 | Profile-Specific Compose Renderer | ISO-001 | Complete | `pytest tests/unit/brain/test_compose.py -q` -> included in 15 passed slice verification | PASS | `feat(brain): add platform foundation` |
+| BRAIN-002 | Postgres And pgvector Schema | BRAIN-001 | Complete | `pytest tests/unit/brain/test_schema_sql.py tests/integration/brain/test_postgres_schema.py -q` -> included in 15 passed slice verification | PASS | `feat(brain): add platform foundation` |
+| BRAIN-003 | Redis Runtime Integration | BRAIN-001, BRAIN-002 | Complete | `pytest tests/unit/brain/test_redis.py -q` -> included in 15 passed slice verification | PASS | `feat(brain): add platform foundation` |
+| BRAIN-004 | Canonical Ledger Writer | BRAIN-002, SEC-001 | Complete | `pytest tests/unit/brain/test_ledgers.py -q` -> included in 15 passed slice verification | PASS | `feat(brain): add platform foundation` |
+| BRAIN-005 | FastAPI Brain API Skeleton | BRAIN-002, BRAIN-003, BRAIN-004, PROF-005 | Pending | Pending | Pending | Pending |
+| BRAIN-006 | Health, Status, And Settings API | BRAIN-005, PROF-006, CODE-001 | Pending | Pending | Pending | Pending |
+| BRAIN-007 | Brain CLI Up Down Status | BRAIN-001, BRAIN-006, FND-004 | Pending | Pending | Pending | Pending |
+| BRAIN-008 | Next.js Brain Web Shell Starter | BRAIN-006 | Pending | Pending | Pending | Pending |
+| BRAIN-009 | Brain Context Server Stub | BRAIN-005, ADAPT-001 | Pending | Pending | Pending | Pending |
+| GATE-001 | Brain Platform Integration Gate | BRAIN-007, BRAIN-008, BRAIN-009 | Pending | Pending | Pending | Pending |
+
+## Orchestration Notes
+
+- 2026-06-05: Started Phase 3 from the DAG in dependency order.
+- First implementer slice: `BRAIN-001` through `BRAIN-004`, covering Compose
+  rendering, schema SQL, Redis runtime configuration, and append-only ledgers.
+- 2026-06-05: Reviewer rejected the first slice because `profile_id UUID`
+  conflicted with string profile ids emitted by Compose/env; implementer changed
+  the schema and migration to `profile_id TEXT` and added a regression test for
+  the rendered env contract.
+- 2026-06-05: First slice review passed after fix. Local verification:
+  `pytest tests/unit/brain/test_compose.py tests/unit/brain/test_schema_sql.py tests/unit/brain/test_redis.py tests/unit/brain/test_ledgers.py tests/integration/brain/test_postgres_schema.py tests/unit/test_phase3_progress_doc.py -q`
+  -> 15 passed.
+- Later parallelization point: after `BRAIN-006`, `BRAIN-008` can proceed
+  independently from `BRAIN-007` and `BRAIN-009` as long as file ownership stays
+  separate.
+
+## Acceptance Gates
+
+- `zsper brain status` must report profile-scoped service state.
+- Brain Compose must include Postgres/pgvector, Redis, SearXNG, Honcho, Brain
+  API, and Next.js web, and must exclude `llm-server` model serving.
+- Work and personal profile outputs must use distinct roots, database names,
+  volumes, ledgers, Redis keys, and logs.
+- Mutating records must mirror to profile-local append-only JSONL ledgers with
+  secret redaction.
+- Core Brain flows must not require hosted model, hosted search, hosted
+  extraction, Notion, Linear, Open WebUI, Paperclip, Ruflo, or OpenClaw
+  dependencies.
