@@ -514,7 +514,7 @@ def test_cli_brain_answer_prints_structured_json(
         )
 
     monkeypatch.setattr(
-        "zsper.cli._answer_question_profile",
+        "zsper.brain.rag_commands.answer_question_profile",
         fake_answer_question_profile,
     )
 

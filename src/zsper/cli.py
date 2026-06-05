@@ -41,11 +41,6 @@ class _Parser(argparse.ArgumentParser):
 
 
 def _placeholder(namespace: argparse.Namespace) -> int:
-    if namespace.group == "brain" and namespace.command == "ingest":
-        policy_exit_code = _maybe_reject_ingest_by_profile_policy(namespace)
-        if policy_exit_code is not None:
-            return policy_exit_code
-
     profile = _profile_ref_for_command(namespace.profile, missing_ok=True) or "unconfigured"
     print(
         f"zsper {namespace.group} {namespace.command} is not implemented "
@@ -151,181 +146,6 @@ def _profile_ref_for_command(
         raise
 
 
-def _maybe_reject_ingest_by_profile_policy(namespace: argparse.Namespace) -> int | None:
-    from zsper.config.user import UserConfigError
-    from zsper.profiles import ProfileError, resolve_profile
-    from zsper.security.network_policy import check_network_policy, looks_like_url
-
-    if not namespace.path_or_url:
-        return None
-
-    try:
-        profile = resolve_profile(_profile_ref_for_command(namespace.profile))
-    except (ProfileError, UserConfigError):
-        return None
-
-    action = "url-ingest" if looks_like_url(namespace.path_or_url) else "local-file-read"
-    decision = check_network_policy(
-        profile.network_policy,
-        namespace.path_or_url,
-        action=action,
-        user_triggered=True,
-    )
-    if decision.allowed:
-        return None
-
-    print(decision.reason, file=sys.stderr)
-    return 1
-
-
-def _brain_ingest(namespace: argparse.Namespace) -> int:
-    from zsper.config.user import UserConfigError
-    from zsper.brain.offline_store import BrainOfflineError, ingest_local_file
-    from zsper.profiles import ProfileError, resolve_profile
-
-    try:
-        profile = resolve_profile(_profile_ref_for_command(namespace.profile))
-    except UserConfigError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    except ProfileError:
-        return _placeholder(namespace)
-
-    if profile.mode != "air-offline":
-        return _placeholder(namespace)
-
-    if not namespace.path_or_url:
-        print("path-or-url is required for brain ingest", file=sys.stderr)
-        return 2
-
-    try:
-        document = ingest_local_file(profile, namespace.path_or_url)
-    except BrainOfflineError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    print(f"ingested document {document.document_id}\t{document.source_path}")
-    return 0
-
-
-def _brain_search(namespace: argparse.Namespace) -> int:
-    from zsper.config.user import UserConfigError
-    from zsper.profiles import ProfileError, resolve_profile
-    from zsper.rag import HybridSearchError
-
-    try:
-        profile = resolve_profile(_profile_ref_for_command(namespace.profile))
-    except UserConfigError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    except ProfileError:
-        return _placeholder(namespace)
-
-    query = " ".join(namespace.query).strip()
-    if not query:
-        print("query is required for brain search", file=sys.stderr)
-        return 2
-
-    try:
-        results = _hybrid_search_profile(profile, query)
-    except HybridSearchError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    for result in results:
-        components = (
-            f"bm25={result.score_components['bm25']:.6g},"
-            f"dense={result.score_components['dense']:.6g}"
-        )
-        print(
-            f"{result.score:.6g}\t{result.document_id}\t{result.chunk_id}\t"
-            f"{result.citation_anchor_id}\t{result.source_path_or_url}\t"
-            f"{components}\t{result.text_preview}"
-        )
-    return 0
-
-
-def _brain_answer(namespace: argparse.Namespace) -> int:
-    from zsper.config.user import UserConfigError
-    from zsper.profiles import ProfileError, resolve_profile
-    from zsper.rag import AnswerError, HybridSearchError
-
-    try:
-        profile = resolve_profile(_profile_ref_for_command(namespace.profile))
-    except UserConfigError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    except ProfileError:
-        return _placeholder(namespace)
-
-    question = " ".join(namespace.query).strip()
-    if not question:
-        print("query is required for brain answer", file=sys.stderr)
-        return 2
-
-    try:
-        answer = _answer_question_profile(profile, question)
-    except (AnswerError, HybridSearchError) as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    print(json.dumps(answer.to_dict(), indent=2, sort_keys=True))
-    return 0
-
-
-def _hybrid_search_profile(profile, query: str):
-    engine, _store = _hybrid_search_components(profile)
-    return engine.search(profile, query)
-
-
-def _answer_question_profile(profile, question: str):
-    from zsper.rag import answer_question
-
-    engine, store = _hybrid_search_components(profile)
-    results = engine.search(profile, question)
-    return answer_question(profile, store, question, results)
-
-
-def _hybrid_search_components(profile):
-    import os
-    from pathlib import Path
-
-    from zsper.rag import HybridSearchEngine, ProfileRagStore
-    from zsper.rag.embeddings import provider_for_profile
-    from zsper.rag.indexes import ProfileBm25Index, ProfileVectorIndex
-
-    index_root = Path(profile.root) / "brain" / "indexes"
-    rag_sqlite_path = os.environ.get("ZSPER_RAG_SQLITE_PATH")
-    postgres_dsn = os.environ.get("POSTGRES_DSN")
-    if rag_sqlite_path or profile.storage_backend == "sqlite-local" or not postgres_dsn:
-        store = ProfileRagStore.sqlite(rag_sqlite_path or index_root / "rag.sqlite")
-    else:
-        store = ProfileRagStore.postgres_dsn(postgres_dsn)
-
-    bm25_index = ProfileBm25Index.sqlite(
-        os.environ.get("ZSPER_BM25_SQLITE_PATH") or index_root / "bm25.sqlite"
-    )
-    vector_sqlite_path = os.environ.get("ZSPER_VECTOR_SQLITE_PATH")
-    if (
-        vector_sqlite_path
-        or profile.storage_backend == "sqlite-local"
-        or not postgres_dsn
-    ):
-        vector_index = ProfileVectorIndex.sqlite(
-            vector_sqlite_path or index_root / "vectors.sqlite"
-        )
-    else:
-        vector_index = ProfileVectorIndex.postgres_dsn(postgres_dsn)
-
-    engine = HybridSearchEngine(
-        store=store,
-        bm25_index=bm25_index,
-        vector_index=vector_index,
-        query_embedding_provider=provider_for_profile(profile),
-    )
-    return engine, store
-
-
 def _configure_reserved_signature(
     command_parser: argparse.ArgumentParser,
     *,
@@ -389,18 +209,47 @@ def _brain_handler(command: str):
         from zsper.brain.context_server import command as context_server_command
 
         return context_server_command
+    if command in {"ingest", "search", "answer"}:
+        from zsper.brain.rag_commands import handler
 
-    return {
-        "ingest": _brain_ingest,
-        "search": _brain_search,
-        "answer": _brain_answer,
-    }.get(command, _placeholder)
+        return handler(command)
+
+    return _placeholder
 
 
 def _code_handler(command: str):
     from zsper.code.commands import handler
 
     return handler(command)
+
+
+def _command_help(group: str, command: str) -> str:
+    implemented_help = {
+        ("brain", "ingest"): "Ingest a source into the profile RAG index.",
+        ("brain", "search"): "Search the profile RAG index.",
+        ("brain", "answer"): "Answer with profile RAG citations.",
+    }
+    return implemented_help.get(
+        (group, command),
+        "Reserved for a later implementation task.",
+    )
+
+
+def _command_description(group: str, command: str) -> str:
+    descriptions = {
+        ("brain", "ingest"): (
+            "Ingest a source into the profile RAG index. Runs capture, parsing, "
+            "chunking, citation, embedding, BM25, and vector indexing."
+        ),
+        ("brain", "search"): "Run profile-scoped hybrid BM25 plus dense RAG search.",
+        ("brain", "answer"): (
+            "Generate a local model answer with structured citation objects."
+        ),
+    }
+    return descriptions.get(
+        (group, command),
+        f"zsper {group} {command} is reserved for a later implementation task.",
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -431,15 +280,12 @@ def _build_parser() -> argparse.ArgumentParser:
         for command in commands:
             command_parser = command_parsers.add_parser(
                 command,
-                help="Reserved for a later implementation task.",
-                description=(
-                    f"zsper {group} {command} is reserved for a later "
-                    "implementation task."
-                ),
+                help=_command_help(group, command),
+                description=_command_description(group, command),
             )
             command_parser.add_argument(
                 "--profile",
-                help="Profile name to resolve when this command is implemented.",
+                help="Profile name or root for profile-scoped commands.",
             )
             _configure_reserved_signature(
                 command_parser,

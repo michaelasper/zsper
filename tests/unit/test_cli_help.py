@@ -79,7 +79,6 @@ def test_reserved_commands_return_milestone_placeholder(
 @pytest.mark.parametrize(
     ("argv", "profile"),
     [
-        (["brain", "search", "--profile", "air"], "air"),
         (["agent", "run", "--profile", "work"], "work"),
     ],
 )
@@ -97,8 +96,6 @@ def test_operational_commands_accept_profile_option(
 @pytest.mark.parametrize(
     ("argv", "profile"),
     [
-        (["brain", "ingest", "README.md", "--profile", "work"], "work"),
-        (["brain", "search", "hybrid retrieval", "--profile", "work"], "work"),
         (
             ["agent", "run", "--harness", "pi", "--task", "123", "--profile", "work"],
             "work",
