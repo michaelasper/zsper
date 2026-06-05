@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.errors import install_error_handlers
-from app.routes import health, settings, status
+from app.routes import citations, documents, health, settings, status
 from zsper.brain.api import DEFAULT_LOCAL_CORS_ORIGINS, DefaultServiceProbes, ServiceProbes
 
 
@@ -38,6 +38,8 @@ def create_app(
         ],
     )
     install_error_handlers(app)
+    app.include_router(citations.router)
+    app.include_router(documents.router)
     app.include_router(health.router)
     app.include_router(status.router)
     app.include_router(settings.router)

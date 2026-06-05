@@ -18,10 +18,10 @@ Milestone: M4 Documents, RAG, And Citations
 | RAG-008 | Citation Anchor Generation | RAG-007 | Complete | `pytest tests/unit/rag/test_citations.py -q` -> 5 passed | PASS | `feat(rag): add citations embeddings and bm25` |
 | RAG-009 | Local Embedding Worker | RAG-007, SEC-002 | Complete | `pytest tests/unit/rag/test_embeddings.py -q` -> 4 passed | PASS | `feat(rag): add citations embeddings and bm25` |
 | RAG-010 | BM25 Index | RAG-007 | Complete | `pytest tests/unit/rag/test_bm25.py -q` -> 3 passed | PASS | `feat(rag): add citations embeddings and bm25` |
-| RAG-011 | Dense Vector Index | RAG-009, BRAIN-002 | Pending | Pending | Pending | Pending |
+| RAG-011 | Dense Vector Index | RAG-009, BRAIN-002 | Complete | `pytest tests/unit/rag/test_vector_index.py tests/integration/rag/test_pgvector.py -q` -> 5 passed, 1 skipped | PASS | `feat(rag): add vector index and documents api` |
 | RAG-012 | Hybrid Search | RAG-010, RAG-011 | Pending | Pending | Pending | Pending |
 | RAG-013 | Citation-Grounded Answer Flow | RAG-008, RAG-012, CODE-001 | Pending | Pending | Pending | Pending |
-| RAG-014 | Documents And Citations API | RAG-008, BRAIN-005 | Pending | Pending | Pending | Pending |
+| RAG-014 | Documents And Citations API | RAG-008, BRAIN-005 | Complete | `pytest tests/unit/brain/test_documents_citations_api.py -q` -> 4 passed | PASS | `feat(rag): add vector index and documents api` |
 | RAG-015 | Brain Ingest/Search/Answer CLI | RAG-012, RAG-013, RAG-014, FND-004 | Pending | Pending | Pending | Pending |
 | RAG-016 | Citation Inspection UI | BRAIN-008, RAG-013, RAG-014 | Pending | Pending | Pending | Pending |
 | GATE-002 | RAG Acceptance Suite | RAG-015, RAG-016 | Pending | Pending | Pending | Pending |
@@ -89,6 +89,16 @@ Milestone: M4 Documents, RAG, And Citations
   metadata for exact path and error retrieval. Local verification:
   `pytest tests/unit/rag/test_citations.py tests/unit/rag/test_embeddings.py tests/unit/rag/test_bm25.py tests/unit/rag/test_chunking.py tests/unit/rag/test_store.py -q`
   -> 23 passed.
+- 2026-06-05: Implemented and reviewed `RAG-011` and `RAG-014` in parallel
+  after their prerequisites were available. `RAG-011` adds SQLite-compatible and
+  pgvector-backed dense vector indexing with profile-scoped vector rows and
+  deterministic local test vectors; the live pgvector smoke test is skipped
+  unless `ZSPER_TEST_PGVECTOR_DSN` is configured. `RAG-014` adds Brain API
+  document and citation routes for listing, inspection, bounded source context,
+  audit ids, redacted document metadata, and cross-profile rejection. Local
+  verification:
+  `pytest tests/unit/rag/test_vector_index.py tests/integration/rag/test_pgvector.py tests/unit/brain/test_documents_citations_api.py -q`
+  -> 9 passed, 1 skipped.
 
 ## Acceptance Gates
 

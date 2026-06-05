@@ -7,6 +7,7 @@ from typing import Mapping
 
 from fastapi import Depends, Request
 
+from zsper.rag import ProfileRagStore
 from zsper.brain.api import (
     ApiProfileContext,
     DatabaseRuntimeConfig,
@@ -62,3 +63,12 @@ def get_redis_runtime_config(
 
 def get_service_probes(request: Request) -> ServiceProbes:
     return request.app.state.service_probes
+
+
+def get_rag_store(
+    context: ApiProfileContext = Depends(get_profile_context),
+) -> ProfileRagStore:
+    sqlite_path = context.environ.get("ZSPER_RAG_SQLITE_PATH")
+    if sqlite_path:
+        return ProfileRagStore.sqlite(sqlite_path)
+    return ProfileRagStore.postgres_dsn(context.database.dsn)
