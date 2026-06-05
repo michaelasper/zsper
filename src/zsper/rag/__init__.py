@@ -1,5 +1,12 @@
 """RAG document models, policy gates, and profile-scoped stores."""
 
+from zsper.rag.chunking import (
+    ChunkLocationMetadata,
+    ChunkSourceLocation,
+    ChunkingError,
+    ChunkingResult,
+    chunk_document,
+)
 from zsper.rag.models import (
     DOCUMENT_PARSERS,
     DOCUMENT_SOURCE_TYPES,
@@ -25,6 +32,10 @@ __all__ = [
     "POSTGRES_RAG_SCHEMA_SQL",
     "SQLITE_RAG_SCHEMA_SQL",
     "CitationAnchor",
+    "ChunkLocationMetadata",
+    "ChunkSourceLocation",
+    "ChunkingError",
+    "ChunkingResult",
     "Document",
     "DocumentChunk",
     "EmbeddingMetadata",
@@ -33,5 +44,6 @@ __all__ = [
     "RagPolicyError",
     "RagPolicyGate",
     "RagStoreError",
+    "chunk_document",
     "replay_document_metadata",
 ]

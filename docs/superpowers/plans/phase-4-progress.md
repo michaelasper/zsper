@@ -14,7 +14,7 @@ Milestone: M4 Documents, RAG, And Citations
 | RAG-004 | Parser Selector And Text Parser | RAG-002, RAG-003 | Complete | `pytest tests/unit/rag/test_parser_selector.py -q` -> 26 passed | PASS | `feat(rag): add parser selection` |
 | RAG-005 | Docling Parser Adapter | RAG-004 | Complete | `pytest tests/unit/rag/test_docling_parser.py -q` -> 4 passed | PASS | `feat(rag): add docling and web capture` |
 | RAG-006 | Local Web Capture And Research Bridge | RAG-003, RAG-004 | Complete | `pytest tests/unit/rag/test_web_capture.py -q` -> 17 passed | PASS | `feat(rag): add docling and web capture` |
-| RAG-007 | Deterministic Chunking | RAG-004, RAG-005, RAG-006 | Pending | Pending | Pending | Pending |
+| RAG-007 | Deterministic Chunking | RAG-004, RAG-005, RAG-006 | Complete | `pytest tests/unit/rag/test_chunking.py -q` -> 4 passed | PASS | `feat(rag): add deterministic chunking` |
 | RAG-008 | Citation Anchor Generation | RAG-007 | Pending | Pending | Pending | Pending |
 | RAG-009 | Local Embedding Worker | RAG-007, SEC-002 | Pending | Pending | Pending | Pending |
 | RAG-010 | BM25 Index | RAG-007 | Pending | Pending | Pending | Pending |
@@ -69,6 +69,13 @@ Milestone: M4 Documents, RAG, And Citations
   sensitive fragment keys while preserving benign fragments. Local verification:
   `pytest tests/unit/rag/test_docling_parser.py tests/unit/rag/test_web_capture.py -q`
   -> 21 passed.
+- 2026-06-05: Implemented and reviewed `RAG-007`. Deterministic chunking now
+  consumes plain text and Docling parsed representations, persists
+  profile-scoped `DocumentChunk` rows with stable IDs, token estimates, and byte
+  offsets, and returns sidecar parser location metadata for the future citation
+  anchor task. Local verification:
+  `pytest tests/unit/rag/test_chunking.py tests/unit/rag/test_docling_parser.py tests/unit/rag/test_parser_selector.py tests/unit/rag/test_store.py -q`
+  -> 41 passed.
 - Parallelization point: after `RAG-007`, dispatch `RAG-008`, `RAG-009`, and
   `RAG-010` in parallel where write scopes remain disjoint.
 
