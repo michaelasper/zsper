@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import os
 import signal
+import shlex
 import subprocess
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -20,6 +22,7 @@ from zsper.security.network_policy import LOCALHOST_NAMES
 
 DEFAULT_OMLX_BIN = "omlx"
 DEFAULT_OMLX_API = "openai"
+STARTUP_POLL_DELAY_SECONDS = 0.05
 
 
 @dataclass(frozen=True)
@@ -42,6 +45,13 @@ class OMLXSmokeResult:
     ok: bool
     content: str
     status_code: int | None
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class _RecordedProcess:
+    state: str
+    pid: int | None = None
     error: str | None = None
 
 
@@ -97,6 +107,109 @@ class OMLXLauncher:
             DEFAULT_OMLX_API,
         ]
 
+    def _read_pid(self) -> tuple[int | None, str | None]:
+        if not self.pid_path.exists():
+            return None, None
+
+        raw_pid = self.pid_path.read_text(encoding="utf-8").strip()
+        try:
+            pid = int(raw_pid)
+        except ValueError:
+            return None, f"invalid oMLX pid file: {self.pid_path}"
+        if pid <= 0:
+            return None, f"invalid oMLX pid file: {self.pid_path}"
+        return pid, None
+
+    def _launch_record_matches(self, pid: int) -> bool:
+        try:
+            record = json.loads(self.launch_record_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        if not isinstance(record, dict):
+            return False
+        if record.get("pid") != pid:
+            return False
+        if record.get("model_id") != self.endpoint.model_id:
+            return False
+        if record.get("base_url") != self.endpoint.base_url:
+            return False
+        command = record.get("command")
+        return command == self._command()
+
+    def _process_exists(self, pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except OSError:
+            return True
+        return True
+
+    def _process_command_matches(self, pid: int) -> bool:
+        try:
+            completed = subprocess.run(
+                ["ps", "-p", str(pid), "-o", "args="],
+                shell=False,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError:
+            return False
+        if completed.returncode != 0:
+            return False
+        try:
+            actual = shlex.split(completed.stdout.strip())
+        except ValueError:
+            return False
+        expected = self._command()
+        if len(actual) < len(expected):
+            return False
+
+        actual_bin = actual[0]
+        expected_bin = expected[0]
+        if Path(expected_bin).is_absolute():
+            if actual_bin != expected_bin:
+                return False
+        elif Path(actual_bin).name != expected_bin:
+            return False
+        return actual[1 : len(expected)] == expected[1:]
+
+    def _recorded_process(self) -> _RecordedProcess:
+        pid, pid_error = self._read_pid()
+        if pid_error is not None:
+            return _RecordedProcess(state="invalid", error=pid_error)
+        if pid is None:
+            return _RecordedProcess(state="missing")
+
+        process_exists = self._process_exists(pid)
+        if not process_exists:
+            return _RecordedProcess(state="stale", pid=pid)
+        if not self._launch_record_matches(pid):
+            return _RecordedProcess(
+                state="unverified",
+                pid=pid,
+                error=f"pid {pid} does not match a verified oMLX launch",
+            )
+        if not self._process_command_matches(pid):
+            return _RecordedProcess(
+                state="unverified",
+                pid=pid,
+                error=f"pid {pid} does not match a verified oMLX launch",
+            )
+        return _RecordedProcess(state="valid", pid=pid)
+
+    def _clear_runtime_record(self) -> None:
+        self.pid_path.unlink(missing_ok=True)
+        self.launch_record_path.unlink(missing_ok=True)
+
+    @staticmethod
+    def _process_returncode(process: subprocess.Popen[str]) -> int | None:
+        poll = getattr(process, "poll", None)
+        if callable(poll):
+            return poll()
+        return None
+
     def start(self) -> OMLXCommandResult:
         if not self._is_local_endpoint():
             return OMLXCommandResult(
@@ -105,6 +218,22 @@ class OMLXLauncher:
             )
 
         self.runtime_dir.mkdir(parents=True, exist_ok=True)
+        recorded = self._recorded_process()
+        if recorded.state == "valid" and recorded.pid is not None:
+            return OMLXCommandResult(
+                returncode=0,
+                stdout=f"already running oMLX pid {recorded.pid} for {self.profile.name}",
+            )
+        if recorded.state == "stale":
+            self._clear_runtime_record()
+        elif recorded.state == "invalid":
+            self._clear_runtime_record()
+        elif recorded.state == "unverified":
+            return OMLXCommandResult(
+                returncode=1,
+                stderr=recorded.error or "recorded oMLX process is not verified",
+            )
+
         command = self._command()
         try:
             process = subprocess.Popen(
@@ -117,6 +246,17 @@ class OMLXLauncher:
             )
         except OSError as exc:
             return OMLXCommandResult(returncode=1, stderr=str(exc))
+
+        time.sleep(STARTUP_POLL_DELAY_SECONDS)
+        returncode = self._process_returncode(process)
+        if returncode is not None:
+            return OMLXCommandResult(
+                returncode=1,
+                stderr=(
+                    f"oMLX pid {process.pid} exited before launch was recorded "
+                    f"(returncode {returncode})"
+                ),
+            )
 
         self.pid_path.write_text(f"{process.pid}\n", encoding="utf-8")
         self.launch_record_path.write_text(
@@ -146,20 +286,36 @@ class OMLXLauncher:
                 stdout=f"oMLX not running for {self.profile.name}",
             )
 
-        raw_pid = self.pid_path.read_text(encoding="utf-8").strip()
-        try:
-            pid = int(raw_pid)
-        except ValueError:
+        recorded = self._recorded_process()
+        if recorded.state == "missing":
+            return OMLXCommandResult(
+                returncode=0,
+                stdout=f"oMLX not running for {self.profile.name}",
+            )
+        if recorded.state == "invalid":
             self.pid_path.unlink(missing_ok=True)
             return OMLXCommandResult(
                 returncode=1,
-                stderr=f"invalid oMLX pid file: {self.pid_path}",
+                stderr=recorded.error or f"invalid oMLX pid file: {self.pid_path}",
+            )
+        if recorded.state == "stale" and recorded.pid is not None:
+            self._clear_runtime_record()
+            return OMLXCommandResult(
+                returncode=0,
+                stdout=f"removed stale oMLX pid {recorded.pid} for {self.profile.name}",
+            )
+        if recorded.state == "unverified":
+            return OMLXCommandResult(
+                returncode=1,
+                stderr=recorded.error or "recorded oMLX process is not verified",
             )
 
+        assert recorded.pid is not None
+        pid = recorded.pid
         try:
             os.kill(pid, signal.SIGTERM)
         except ProcessLookupError:
-            self.pid_path.unlink(missing_ok=True)
+            self._clear_runtime_record()
             return OMLXCommandResult(
                 returncode=0,
                 stdout=f"removed stale oMLX pid {pid} for {self.profile.name}",
@@ -167,7 +323,7 @@ class OMLXLauncher:
         except OSError as exc:
             return OMLXCommandResult(returncode=1, stderr=str(exc))
 
-        self.pid_path.unlink(missing_ok=True)
+        self._clear_runtime_record()
         return OMLXCommandResult(
             returncode=0,
             stdout=f"stopped oMLX pid {pid} for {self.profile.name}",

@@ -104,10 +104,27 @@ def test_code_cli_start_and_stop_use_profile_local_omlx_launcher(
     def fake_kill(pid: int, sig: int) -> None:
         killed.append((pid, sig))
 
+    def fake_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        assert args == ["ps", "-p", "6060", "-o", "args="]
+        assert kwargs["shell"] is False
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=(
+                "omlx serve --model zsper-qwen35-oq6-fp16-mtp-omlx-128k "
+                "--host 127.0.0.1 --port 9127 --api openai"
+            ),
+            stderr="",
+        )
+
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr("os.kill", fake_kill)
 
     assert app(["code", "start", "--profile", "work"]) == 0
+    rendered = (root / "runtime" / "code" / "omlx-launch.json").read_text(
+        encoding="utf-8"
+    )
     assert app(["code", "stop", "--profile", "work"]) == 0
 
     assert calls == [
@@ -124,8 +141,5 @@ def test_code_cli_start_and_stop_use_profile_local_omlx_launcher(
             "openai",
         ]
     ]
-    assert killed == [(6060, 15)]
-    rendered = (root / "runtime" / "code" / "omlx-launch.json").read_text(
-        encoding="utf-8"
-    )
+    assert killed == [(6060, 0), (6060, 15)]
     assert "llm" + "-server" not in rendered
