@@ -16,9 +16,9 @@ Non-editing role:
 
 Repository boundary checks:
 - /Users/michaelasper/source/zsper must own product platform code: CLI, profiles, config generation, zsper-code adapters, zsper-brain, Brain API, RAG, memories, notes, tasks, Zsper Orchestrator, web shell, tests, and docs.
-- /Users/michaelasper/source/llm-server must only provide local model deployment and the oMLX OpenAI-compatible endpoint contract.
-- FAIL if profile data, Brain services, RAG, memory, task orchestration, generated client configs, user ledgers, or product UX code is stored in llm-server.
-- FAIL if zsper product code imports llm-server benchmark internals such as benchmarks.local_server.
+- Zsper must own profile-local oMLX launch and local OpenAI-compatible endpoint checks through zsper-code.
+- FAIL if profile data, Brain services, RAG, memory, task orchestration, generated client configs, user ledgers, or product UX code is stored outside Zsper profile-owned paths.
+- FAIL if Brain Compose includes model serving instead of consuming the local endpoint as a client.
 
 Hard-fail conditions:
 - FAIL for any SaaS dependency in core flows, including hosted model APIs, hosted search APIs, hosted extraction APIs, Notion, Linear, Open WebUI, Paperclip, Ruflo, or OpenClaw as a required runtime dependency.

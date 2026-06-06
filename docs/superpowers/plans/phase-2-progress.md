@@ -21,7 +21,7 @@ This document tracks Phase 2 implementation status for
 | `PROF-006` Profile Doctor | Implemented | `src/zsper/profiles/doctor.py`, `tests/unit/profiles/test_doctor.py` |
 | `CLI-001` Profile CLI Commands | Implemented | `src/zsper/cli.py`, `tests/unit/profiles/test_profile_cli.py` |
 | `CONF-001` Model Endpoint Records | Implemented | `src/zsper/config/model_endpoint.py`, `tests/unit/config/test_model_endpoint.py` |
-| `CODE-001` External `llm-server` Contract | Implemented | `src/zsper/code/llm_server_contract.py`, `tests/unit/code/test_llm_server_contract.py`, `tests/security/test_llm_server_boundary.py` |
+| `CODE-001` Profile-Local oMLX Launcher | Implemented | `src/zsper/code/omlx_launcher.py`, `tests/unit/code/test_omlx_launcher.py`, `tests/security/test_model_serving_boundary.py` |
 | `CONF-002` Profile-Local Config Writer | Implemented | `src/zsper/config/writer.py`, `src/zsper/code/adapters/base.py`, `tests/unit/config/test_writer.py` |
 | `ADAPT-001` Zed Adapter | Implemented | `src/zsper/code/adapters/zed.py`, `tests/unit/code/test_zed_adapter.py` |
 | `ADAPT-002` OpenCode Adapter | Implemented | `src/zsper/code/adapters/opencode.py`, `tests/unit/code/test_opencode_adapter.py` |
@@ -36,9 +36,8 @@ This document tracks Phase 2 implementation status for
   module boundaries required by the DAG.
 - Adapter generation remains profile-local by default. The global patch helper
   exists only as an explicit API and returns redacted diffs with backups.
-- `llm-server` remains an external dependency through command templates and the
-  local OpenAI-compatible HTTP contract; Zsper product code does not import
-  `llm-server` internals.
+- Zsper owns oMLX launch through profile-local runtime records and verifies the
+  local OpenAI-compatible HTTP endpoint without external repo command contracts.
 - The DAG originally named separate profile/code command modules and test files.
   The current implementation keeps the small command handlers in `src/zsper/cli.py`
   and tests them through `tests/unit/profiles/test_profile_cli.py` and
@@ -79,7 +78,7 @@ pytest tests/security/test_hosted_dependency_guard.py -v
 pytest tests/unit/profiles/test_doctor.py -v
 pytest tests/unit/profiles/test_profile_cli.py -v
 pytest tests/unit/config/test_model_endpoint.py -v
-pytest tests/unit/code/test_llm_server_contract.py tests/security/test_llm_server_boundary.py -v
+pytest tests/unit/code/test_omlx_launcher.py tests/security/test_model_serving_boundary.py -v
 pytest tests/unit/config/test_writer.py -v
 pytest tests/unit/code/test_zed_adapter.py -v
 pytest tests/unit/code/test_opencode_adapter.py -v

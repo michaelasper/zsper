@@ -4,7 +4,7 @@
 
 **Goal:** Build the local-first Zsper product platform from `docs/zsper-local-ai-platform-ultimate-spec.md` as a dependency-ordered DAG of independently verifiable implementation tasks.
 
-**Architecture:** Zsper is split into a Python-owned product core and a Next.js Brain web shell, with profile isolation as the root invariant. Python owns CLI, profiles, config generation, security policy, RAG workers, Brain API, and Zsper Orchestrator; Next.js owns the dense local workspace UI. `llm-server` remains an external model-serving dependency accessed only through command or OpenAI-compatible HTTP contracts.
+**Architecture:** Zsper is split into a Python-owned product core and a Next.js Brain web shell, with profile isolation as the root invariant. Python owns CLI, profiles, config generation, security policy, RAG workers, profile-local oMLX launch, Brain API, and Zsper Orchestrator; Next.js owns the dense local workspace UI. Model serving is launched by Zsper and verified through local OpenAI-compatible HTTP contracts.
 
 **Tech Stack:** Python 3.12, Typer or Click, Pydantic, pytest, FastAPI, SQLAlchemy/Alembic, Postgres, pgvector, Redis, Docker Compose, SearXNG, Docling, local embeddings, BM25 indexing, Next.js, TypeScript, Playwright, tmux.
 
@@ -43,7 +43,7 @@ Communication is through repository files, tests, and ledgers only. Agents must 
 | --- | --- | --- |
 | M0 Foundation | Repo baseline, Python package, test runner, empty CLI, architecture docs. | `pytest --collect-only` and CLI help tests pass. |
 | M1 Profiles And Security Core | Work, personal, and air profiles, registry, resolver, directory layout, redaction, network and remote policy primitives. | Work, personal, and air profile tests pass and policy tests reject invalid states. |
-| M2 Code Adapters | Model endpoint records, external `llm-server` contract, profile-local Zed/OpenCode/Pi/Hermes adapter generation. | Adapter golden tests pass and no product code imports `llm-server` internals. |
+| M2 Code Adapters | Model endpoint records, profile-local oMLX launcher, profile-local Zed/OpenCode/Pi/Hermes adapter generation. | Adapter golden tests pass and stale external serving dependency scans pass. |
 | M3 Brain Platform | Profile-specific Compose, Postgres/pgvector schema, Redis, ledgers, FastAPI skeleton, health/status/settings, Next.js shell. | `zsper brain status` reports profile-scoped service state with model serving excluded from Compose. |
 | M4 Documents And RAG | Asset capture, parsing, Docling, web capture, chunking, citations, embeddings, BM25, dense vectors, hybrid search, grounded answers. | Markdown/PDF/web/repo fixtures ingest and answer with exact chunk citation objects. |
 | M5 Records And Workspace | Notes, tasks, memories, research inbox, chat, web views, canonical ledgers. | Notes/tasks/memories/research/chat are profile-local and visible in the web shell. |
@@ -73,7 +73,7 @@ graph TD
   SEC003 --> SEC004[SEC-004 Hosted Dependency Guard]
 
   PROF005 --> CONF001[CONF-001 Model Endpoint]
-  CONF001 --> CODE001[CODE-001 llm-server Contract]
+  CONF001 --> CODE001[CODE-001 oMLX Launcher]
   PROF005 --> CONF002[CONF-002 Config Writer]
   SEC001 --> CONF002
   CONF002 --> ADAPT001[ADAPT-001 Zed]
@@ -184,7 +184,7 @@ Create and evolve these paths as tasks require them:
 
 | Path | Responsibility |
 | --- | --- |
-| `README.md` | Product purpose, local-first constraints, repo boundary with `llm-server`, quick start. |
+| `README.md` | Product purpose, local-first constraints, Zsper-owned serving boundary, quick start. |
 | `pyproject.toml` | Python package metadata, CLI entry point, pytest config, dependency groups. |
 | `package.json` | Workspace scripts for Brain web and any TypeScript checks. |
 | `docs/architecture/` | Architecture notes derived from the ultimate spec. |
@@ -194,7 +194,7 @@ Create and evolve these paths as tasks require them:
 | `src/zsper/profiles/` | Profile schema, defaults, registry, resolver, init, doctor. |
 | `src/zsper/security/` | Redaction, hosted-call guards, network policy, remote policy, secret policy. |
 | `src/zsper/config/` | Model endpoint records and profile-local config writer. |
-| `src/zsper/code/` | `llm-server` contract and editor/agent adapter generation. |
+| `src/zsper/code/` | Profile-local oMLX launcher and editor/agent adapter generation. |
 | `src/zsper/brain/` | Compose renderer, health/status commands, API support modules, ledgers. |
 | `src/zsper/rag/` | Assets, parsers, chunking, citations, embeddings, indexes, search, answer flow. |
 | `src/zsper/memory/` | Canonical memory event logic and Honcho sidecar integration helpers. |
@@ -219,18 +219,17 @@ Create and evolve these paths as tasks require them:
 - Create: `docs/architecture/repository-boundary.md`
 - Test: `tests/unit/test_docs_boundary.py`
 
-**Goal:** Make the `zsper` vs `llm-server` boundary explicit before product code exists.
+**Goal:** Make the Zsper-owned product and model-serving boundary explicit before product code exists.
 
 **Requirements:**
-- State that `/Users/michaelasper/source/llm-server` owns model deployment and oMLX serving.
-- State that `/Users/michaelasper/source/zsper` owns profiles, CLI, configs, Brain, RAG, orchestrator, docs, and tests.
-- List allowed dependency forms: environment variable, command template, deploy contract file, and local OpenAI-compatible HTTP.
-- List disallowed dependency forms: importing benchmark internals, storing profile data in `llm-server`, generating adapters from `llm-server`, adding Brain/RAG/memory/tasks to `llm-server`.
+- State that `/Users/michaelasper/source/zsper` owns profiles, CLI, configs, Brain, RAG, orchestrator, profile-local oMLX launch, docs, and tests.
+- List allowed serving forms: `omlx` or `ZSPER_OMLX_BIN`, profile-local runtime records, and local OpenAI-compatible HTTP.
+- List disallowed dependency forms: profile data outside the profile root, hosted model APIs in core flows, generated editor configs outside profile-owned paths by default, model serving in Brain Compose, and shared runtime state across profiles.
 
 **Acceptance Checks:**
 - `README.md` links to the ultimate spec.
-- Boundary language includes `benchmarks.local_server` as a forbidden import.
-- No source file under `src/zsper/` imports from `/Users/michaelasper/source/llm-server`.
+- Boundary language includes profile-local oMLX launch and local OpenAI-compatible HTTP.
+- No source file under `src/zsper/` references the old external serving dependency.
 
 **Verification:**
 - Run: `pytest tests/unit/test_docs_boundary.py -v`
@@ -689,37 +688,38 @@ Create and evolve these paths as tasks require them:
 
 **Suggested Commit:** `feat(config): add model endpoint records`
 
-### CODE-001: External llm-server Contract
+### CODE-001: Profile-Local oMLX Launcher
 
 **Milestone:** M2 Code Adapters  
 **Dependencies:** `CONF-001`, `SEC-002`, `SEC-004`  
 **Owner:** Foundation/Profile Agent  
 **Files:**
-- Create: `src/zsper/code/llm_server_contract.py`
+- Create: `src/zsper/code/omlx_launcher.py`
 - Create: `src/zsper/code/__init__.py`
-- Test: `tests/unit/code/test_llm_server_contract.py`
-- Test: `tests/security/test_llm_server_boundary.py`
+- Test: `tests/unit/code/test_omlx_launcher.py`
+- Test: `tests/security/test_model_serving_boundary.py`
 
-**Goal:** Delegate model serving to `llm-server` without importing `llm-server` internals.
+**Goal:** Launch and verify Zsper's local oMLX model endpoint with profile-local runtime records.
 
 **Requirements:**
-- Support environment variable `ZSPER_LLM_SERVER_DIR=/Users/michaelasper/source/llm-server`.
-- Support configured command templates such as `mise -C "$ZSPER_LLM_SERVER_DIR" run prod-start-zsper`.
+- Support `omlx` on `PATH` and override through `ZSPER_OMLX_BIN`.
+- Launch `omlx serve` with the profile-selected model id, host, port, and OpenAI-compatible API mode.
+- Write PID and launch metadata under the selected profile runtime directory.
 - Support HTTP status checks to `/v1/models`.
 - Support smoke chat completion to `/v1/chat/completions`.
 - Product tests must mock subprocess and HTTP calls.
-- No import from `benchmarks.local_server` or any `llm-server` Python module.
+- No old external model-serving repo command contract, env var, or source import remains.
 
 **Acceptance Checks:**
 - `status` checks the local OpenAI-compatible endpoint.
-- `start` and `stop` render commands without shell mutation.
-- Boundary scan fails if a product module imports `llm-server` benchmark internals.
+- `start` and `stop` manage the profile-local oMLX PID without shell mutation.
+- Boundary scan fails if product code references stale external serving markers.
 
 **Verification:**
-- Run: `pytest tests/unit/code/test_llm_server_contract.py tests/security/test_llm_server_boundary.py -v`
-- Expected: mocked contract and boundary tests pass.
+- Run: `pytest tests/unit/code/test_omlx_launcher.py tests/security/test_model_serving_boundary.py -v`
+- Expected: mocked launcher and boundary tests pass.
 
-**Suggested Commit:** `feat(code): add external model server contract`
+**Suggested Commit:** `feat(code): add profile-local omlx launcher`
 
 ### CONF-002: Profile-Local Config Writer
 
@@ -875,7 +875,7 @@ Create and evolve these paths as tasks require them:
 **Goal:** Implement `zsper code start/stop/status/smoke/install-zed/install-opencode/install-pi`.
 
 **Requirements:**
-- `start`, `stop`, `status`, and `smoke` delegate to the external `llm-server` contract.
+- `start`, `stop`, `status`, and `smoke` use the profile-local oMLX launcher.
 - `install-zed`, `install-opencode`, and `install-pi` write profile-local adapter configs.
 - No global configs are patched by default.
 - Commands require a resolved profile.
@@ -941,7 +941,7 @@ Create and evolve these paths as tasks require them:
 
 **Acceptance Checks:**
 - Work and personal rendered Compose files have distinct database names and volumes.
-- Brain Compose does not include `llm-server` model serving.
+- Brain Compose does not include model serving.
 
 **Verification:**
 - Run: `pytest tests/unit/brain/test_compose.py -v`
@@ -2451,7 +2451,7 @@ Create and evolve these paths as tasks require them:
 
 **Requirements:**
 - Include exact commands for `profile doctor`, `code status`, `code smoke`, `brain up`, `brain status`, `brain down`, `agent status`, and `agent attach`.
-- Explain that model serving remains owned by `llm-server`.
+- Explain that model serving is launched by Zsper and recorded under the selected profile runtime.
 - Explain Tailscale Serve vs Funnel policy.
 - Explain how to inspect JSONL ledgers offline.
 
@@ -2509,7 +2509,7 @@ Create and evolve these paths as tasks require them:
 
 **Requirements:**
 - Work and personal profiles initialize cleanly.
-- `zsper code start/status/smoke/stop` works through `llm-server` contract.
+- `zsper code start/status/smoke/stop` works through the profile-local oMLX launcher.
 - Zed, OpenCode, and Pi configs generate under each profile.
 - Brain Compose starts for a profile.
 - Chat can use the local model endpoint.
@@ -2556,7 +2556,7 @@ Hard fail the review for:
 - Shared work/personal state.
 - Direct agent state mutation that bypasses Zsper Orchestrator records.
 - RAG answers that use retrieved context without exact chunk citation objects.
-- Product code importing `llm-server` benchmark internals.
+- Product code referencing stale external serving contracts.
 - Secret values entering JSONL ledgers, logs, diffs, summaries, generated public configs, or test fixtures.
 
 ## Self-Review

@@ -9,7 +9,7 @@ from collections.abc import Callable
 from zsper.code.adapters.opencode import generate_opencode_adapter
 from zsper.code.adapters.pi import generate_pi_adapter
 from zsper.code.adapters.zed import generate_zed_adapter
-from zsper.code.llm_server_contract import LLMServerContract
+from zsper.code.omlx_launcher import OMLXLauncher
 from zsper.config.model_endpoint import endpoints_for_profile
 from zsper.config.user import UserConfigError, profile_ref_or_default
 from zsper.profiles import ProfileError, resolve_profile
@@ -23,16 +23,16 @@ def _resolve(namespace: Namespace):
         return None
 
 
-def _contract_for_profile(profile) -> LLMServerContract:
-    return LLMServerContract(endpoint=endpoints_for_profile(profile)[0])
+def _launcher_for_profile(profile) -> OMLXLauncher:
+    return OMLXLauncher(profile=profile, endpoint=endpoints_for_profile(profile)[0])
 
 
 def _run_process_command(namespace: Namespace, method_name: str) -> int:
     profile = _resolve(namespace)
     if profile is None:
         return 1
-    contract = _contract_for_profile(profile)
-    completed = getattr(contract, method_name)()
+    launcher = _launcher_for_profile(profile)
+    completed = getattr(launcher, method_name)()
     if completed.stdout:
         print(completed.stdout.strip())
     if completed.stderr:
@@ -52,7 +52,7 @@ def status(namespace: Namespace) -> int:
     profile = _resolve(namespace)
     if profile is None:
         return 1
-    result = _contract_for_profile(profile).status()
+    result = _launcher_for_profile(profile).status()
     if result.available:
         print(f"model server available for {profile.name}: {', '.join(result.models)}")
         return 0
@@ -64,7 +64,7 @@ def smoke(namespace: Namespace) -> int:
     profile = _resolve(namespace)
     if profile is None:
         return 1
-    result = _contract_for_profile(profile).smoke()
+    result = _launcher_for_profile(profile).smoke()
     if result.ok:
         print(f"smoke OK for {profile.name}: {result.content}")
         return 0

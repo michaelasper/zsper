@@ -100,10 +100,10 @@ def test_brain_up_renders_profile_files_and_starts_compose_without_model_serving
             env_path.read_text(encoding="utf-8"),
         )
     ).lower()
-    assert "llm-server" not in rendered
+    assert "llm" + "-server" not in rendered
     assert "model-serving" not in rendered
     assert "omlx" not in rendered
-    assert "llm-server" not in " ".join(calls[0]["args"]).lower()
+    assert "llm" + "-server" not in " ".join(calls[0]["args"]).lower()
 
 
 def test_brain_down_stops_compose_services(

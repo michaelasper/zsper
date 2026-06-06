@@ -36,7 +36,7 @@ def test_code_cli_install_commands_write_profile_local_adapters(
     )
 
 
-def test_code_cli_status_and_smoke_use_external_contract(
+def test_code_cli_status_and_smoke_use_omlx_launcher(
     capsys,
     monkeypatch,
     tmp_path: Path,
@@ -80,29 +80,52 @@ def test_code_cli_status_and_smoke_use_external_contract(
     assert "smoke OK" in smoke.out
 
 
-def test_code_cli_start_and_stop_delegate_to_llm_server(
+def test_code_cli_start_and_stop_use_profile_local_omlx_launcher(
     capsys,
     monkeypatch,
     tmp_path: Path,
     isolated_registry_path: Path,
 ) -> None:
     monkeypatch.setenv("ZSPER_PROFILE_REGISTRY", str(isolated_registry_path))
-    monkeypatch.setenv("ZSPER_LLM_SERVER_DIR", str(tmp_path / "llm-server"))
     root = tmp_path / "work"
     assert app(["profile", "init", "--mode", "work", "--root", str(root)]) == 0
     capsys.readouterr()
     calls: list[list[str]] = []
+    killed: list[tuple[int, int]] = []
 
-    def fake_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+    class FakeProcess:
+        pid = 6060
+
+    def fake_popen(args: list[str], **kwargs: Any) -> FakeProcess:
+        assert kwargs["shell"] is False
         calls.append(args)
-        return subprocess.CompletedProcess(args=args, returncode=0, stdout="ok", stderr="")
+        return FakeProcess()
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    def fake_kill(pid: int, sig: int) -> None:
+        killed.append((pid, sig))
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr("os.kill", fake_kill)
 
     assert app(["code", "start", "--profile", "work"]) == 0
     assert app(["code", "stop", "--profile", "work"]) == 0
 
     assert calls == [
-        ["mise", "-C", str(tmp_path / "llm-server"), "run", "prod-start-zsper"],
-        ["mise", "-C", str(tmp_path / "llm-server"), "run", "prod-stop-zsper"],
+        [
+            "omlx",
+            "serve",
+            "--model",
+            "zsper-qwen35-oq6-fp16-mtp-omlx-128k",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "9127",
+            "--api",
+            "openai",
+        ]
     ]
+    assert killed == [(6060, 15)]
+    rendered = (root / "runtime" / "code" / "omlx-launch.json").read_text(
+        encoding="utf-8"
+    )
+    assert "llm" + "-server" not in rendered

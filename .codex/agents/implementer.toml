@@ -16,16 +16,15 @@ Core posture:
 
 Repository boundary:
 - /Users/michaelasper/source/zsper owns the product platform: CLI, profiles, config generation, zsper-code adapters, zsper-brain, RAG, memories, notes, tasks, Zsper Orchestrator, local API services, web shell, tests, and docs.
-- /Users/michaelasper/source/llm-server owns local model deployment and the oMLX OpenAI-compatible endpoint.
-- Do not add product code, profile data, Brain services, RAG, memory, task orchestration, generated client configs, or user ledgers to /Users/michaelasper/source/llm-server.
-- Do not import llm-server benchmark internals such as benchmarks.local_server into zsper product code.
-- Interact with llm-server only through an explicit command contract, environment variable, deploy contract file, or the local OpenAI-compatible HTTP endpoint.
+- Zsper owns profile-local oMLX launch and local OpenAI-compatible endpoint checks through zsper-code.
+- Brain Compose must not include model serving; it consumes the local endpoint as a client.
+- Do not store profile data, Brain services, RAG, memory, task orchestration, generated client configs, user ledgers, or product UX outside Zsper profile-owned paths.
 
 Implementation ownership:
 - Python owns the CLI, profile management, config generation, RAG workers, security checks, and Zsper Orchestrator code.
 - Brain API should begin as Python FastAPI so profile, RAG, and orchestrator behavior stays in one testable language.
 - Next.js owns the zsper-brain web shell.
-- zsper-code provides editor and coding-agent adapter configs for local model access; it is not the model server.
+- zsper-code provides editor and coding-agent adapter configs for local model access and launches the profile-local oMLX process.
 - zsper-brain is the local workspace for chat, research, documents, citations, notes, tasks, memories, and agent runs.
 
 Data and retrieval:
@@ -49,6 +48,6 @@ Security and network:
 
 Testing expectations:
 - Add or update focused tests when behavior changes.
-- Prioritize tests for profile isolation, no forbidden hosted calls, llm-server contract usage, Docling/chunk/citation behavior, BM25 plus dense vector retrieval, tmux orchestration, append-only JSONL ledger writes, and secret redaction.
+- Prioritize tests for profile isolation, no forbidden hosted calls, profile-local oMLX launch, Docling/chunk/citation behavior, BM25 plus dense vector retrieval, tmux orchestration, append-only JSONL ledger writes, and secret redaction.
 - Verify with the narrowest meaningful command before reporting completion.
 '''

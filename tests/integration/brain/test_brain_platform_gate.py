@@ -103,7 +103,7 @@ def test_brain_platform_outputs_are_profile_isolated(
     assert str(Path(personal.root) / "runtime" / "brain") in personal_compose
 
     combined = "\n".join((work_compose, personal_compose))
-    assert "llm-server" not in combined.lower()
+    assert "llm" + "-server" not in combined.lower()
     assert "model-serving" not in combined.lower()
     assert "omlx" not in combined.lower()
 

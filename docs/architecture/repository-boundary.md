@@ -1,29 +1,22 @@
 # Repository Boundary
 
-This document makes the `zsper` versus `llm-server` boundary explicit before
-product code exists. The boundary follows
-`docs/zsper-local-ai-platform-ultimate-spec.md`.
+This document makes the Zsper-owned product and model-serving boundary
+explicit. The boundary follows `docs/zsper-local-ai-platform-ultimate-spec.md`.
 
 ## Ownership
 
-- /Users/michaelasper/source/llm-server owns model deployment and oMLX serving.
-- /Users/michaelasper/source/zsper owns profiles, CLI, configs, Brain, RAG, orchestrator, docs, and tests.
+- /Users/michaelasper/source/zsper owns profiles, CLI, configs, Brain, RAG, orchestrator, profile-local oMLX launch, local OpenAI-compatible HTTP checks, docs, and tests.
 
-`llm-server` remains the model-serving system. `zsper` remains the product
-platform. The dependency direction is one-way: `zsper` may call an external
-model-serving contract, but product code must not depend on `llm-server`
-internals.
+Zsper is the product platform and the launcher for its local model endpoint.
+Model serving runtime state belongs under the selected profile root. Brain
+services consume the local endpoint as clients. Brain Compose must not include model serving.
 
-## Allowed Dependency Forms
+## Allowed Serving Forms
 
-Zsper may depend on `llm-server` only through these forms:
+Zsper model serving may use only these forms:
 
-- An environment variable such as
-  `ZSPER_LLM_SERVER_DIR=/Users/michaelasper/source/llm-server`.
-- A command template such as
-  `mise -C "$ZSPER_LLM_SERVER_DIR" run prod-start-zsper`.
-- A deploy contract file emitted by `llm-server`, such as a future
-  `reports/local-server/zsper-endpoint.json`.
+- The `omlx` binary on `PATH` or an explicit `ZSPER_OMLX_BIN`.
+- A profile-local runtime directory containing PID and launch records.
 - A local OpenAI-compatible HTTP endpoint, such as
   `http://127.0.0.1:9127/v1`.
 
@@ -31,12 +24,12 @@ Zsper may depend on `llm-server` only through these forms:
 
 Zsper product code must not use any of these dependency forms:
 
-- importing benchmark internals from `llm-server`.
-- importing `benchmarks.local_server`; this is a forbidden import.
-- storing profile data in llm-server.
-- generating adapters from llm-server.
-- adding Brain/RAG/memory/tasks to llm-server.
+- storing profile data outside the profile root.
+- calling a hosted model API in a core flow.
+- generated editor configs outside profile-owned paths.
+- adding model serving to Brain Compose.
+- sharing model runtime state across work, personal, or air profiles.
 
-The practical rule is simple: model serving evidence and oMLX deployment stay in
-`llm-server`; profiles, user-facing commands, generated configs, Brain, RAG,
-memory, tasks, orchestration, docs, and tests stay in `zsper`.
+The practical rule is simple: profiles, user-facing commands, generated
+configs, Brain, RAG, memory, tasks, orchestration, profile-local oMLX runtime
+records, docs, and tests stay in Zsper.

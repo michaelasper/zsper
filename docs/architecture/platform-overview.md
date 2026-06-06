@@ -21,9 +21,10 @@ zsper-brain is the product shell. It owns chat, research, documents,
 citations, notes, tasks, memories, agent runs, settings, and the operator-facing
 workspace. The web shell is a Next.js app backed by local APIs.
 
-zsper-code is the local model adapter layer. It owns profile-local generated
-configs for Zed, OpenCode, Pi, and related harnesses. Model deployment stays in
-`llm-server`; Zsper calls that system through external contracts only.
+zsper-code is the local model adapter layer and launcher layer. It owns
+profile-local generated configs for Zed, OpenCode, Pi, and related harnesses,
+plus the profile-local oMLX process record used by
+`zsper code start|stop|status|smoke`.
 
 Python owns the CLI, profile resolver, config rendering, RAG, ledgers,
 orchestrator, and Brain API. The first Brain API target is FastAPI. Canonical
@@ -55,7 +56,7 @@ storage where the spec calls for them.
 Create the repository orientation layer: README, ownership boundary, Python
 package scaffold, test harness, empty CLI groups, and architecture/runbook
 baselines. Exit when contributors can run tests and explain why product code
-belongs in Zsper instead of `llm-server`.
+and profile-local oMLX launch belong in Zsper.
 
 ### Phase 2: Profiles And Code Adapters
 

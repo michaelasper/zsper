@@ -1,13 +1,15 @@
-"""Local code adapter and model-serving contract helpers."""
+"""Local code adapter and oMLX model-serving helpers."""
 
-from zsper.code.llm_server_contract import (
-    LLMServerContract,
-    LLMServerSmokeResult,
-    LLMServerStatus,
+from zsper.code.omlx_launcher import (
+    OMLXCommandResult,
+    OMLXLauncher,
+    OMLXSmokeResult,
+    OMLXStatus,
 )
 
 __all__ = [
-    "LLMServerContract",
-    "LLMServerSmokeResult",
-    "LLMServerStatus",
+    "OMLXCommandResult",
+    "OMLXLauncher",
+    "OMLXSmokeResult",
+    "OMLXStatus",
 ]

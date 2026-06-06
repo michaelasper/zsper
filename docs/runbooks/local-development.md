@@ -34,7 +34,7 @@ the real user home unless a later task explicitly adds a guarded profile write.
 3. Use `rg` before broad reads:
 
    ```bash
-   rg -n "FND-005|Phase 1|profile isolation|llm-server" docs src tests
+   rg -n "FND-005|Phase 1|profile isolation|profile-local oMLX" docs src tests
    ```
 
    Purpose: find the relevant local context without rereading the whole spec.
@@ -69,9 +69,9 @@ ingest/search without hosted calls.
 ## Development Rules
 
 - Keep Zsper product code in `/Users/michaelasper/source/zsper`.
-- Treat `/Users/michaelasper/source/llm-server` as a model-serving dependency
-  reachable through commands, endpoint metadata, or local OpenAI-compatible
-  HTTP; do not import its benchmark internals.
+- Keep model serving inside Zsper's `code` tooling: launch oMLX with
+  `zsper code start`, record process state under the selected profile runtime,
+  and verify it through local OpenAI-compatible HTTP.
 - Keep generated configs and runtime files profile-local by default.
 - Keep Brain services local. `zsper-brain` is the product shell; `zsper-code` is
   the local model adapter layer.

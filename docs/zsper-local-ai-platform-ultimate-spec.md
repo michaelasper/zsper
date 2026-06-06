@@ -4,17 +4,15 @@ Date: 2026-06-04
 
 ## Executive Summary
 
-Zsper is a local-first AI platform split across two repositories with a strict
+Zsper is a local-first AI platform with profile isolation as the strict
 responsibility boundary:
 
-- `~/source/llm-server` owns local model deployment. For the first production
-  target, it starts and manages the oMLX OpenAI-compatible endpoint on
-  `127.0.0.1:9127`.
 - `~/source/zsper` owns the product platform. It manages profiles, client
   configs, chat, research, local document RAG, memory, notes, tasks, agent
-  orchestration, local API services, and the custom web shell.
+  orchestration, local API services, profile-local oMLX launch, and the custom
+  web shell.
 
-The platform must run as two reusable but separately deployable local systems:
+The platform must run as two reusable local systems:
 
 - `zsper-code`: coding-focused local model access and editor/agent adapters.
 - `zsper-brain`: custom local shell for chat, research, documents, citations,
@@ -52,16 +50,15 @@ configuration, and observability.
 
 ### Local Inference Engineer Perspective
 
-The local model server has already been worked out in `llm-server`. Rebuilding
-or embedding that code in `zsper` would duplicate responsibilities and make
-future engine swaps harder. Zsper should depend on a stable serving contract:
-OpenAI-compatible HTTP, model id, base URL, context window, output limit, tool
-support, health endpoint, and smoke test.
+Zsper owns the local serving lifecycle it needs for the product. The serving
+contract stays intentionally narrow: launch `omlx serve`, write profile-local
+process metadata, then verify the OpenAI-compatible HTTP endpoint by model id,
+base URL, context window, output limit, tool support, health endpoint, and smoke
+test.
 
-Decision: Zsper does not import `benchmarks.local_server` as product internals.
-It can call `llm-server` through a subprocess, a declared command contract, or a
-small adapter script, but the model server remains an external dependency. The
-primary interface is:
+Decision: Zsper launches oMLX through `zsper code start` and records PID plus
+launch metadata under the selected profile runtime directory. The primary
+interface is:
 
 ```text
 base_url: http://127.0.0.1:9127/v1
@@ -125,12 +122,13 @@ sections and decorative cards.
 
 Work and personal installs need reproducible local startup without requiring a
 Kubernetes or cloud stack. Docker Compose is allowed and sufficient for local
-services. Model serving remains outside this compose stack because it is
-hardware-sensitive and already owned by `llm-server`.
+services. Model serving remains outside Brain Compose and is managed by
+`zsper-code` so profiles keep explicit runtime records.
 
 Decision: `zsper brain up` renders profile-specific Docker Compose and env
 files, then starts Postgres + pgvector, Redis, SearXNG, Honcho, local API, and
-Next.js web. `zsper code start` delegates to the `llm-server` deploy contract.
+Next.js web. `zsper code start` launches the profile-selected oMLX model
+endpoint.
 
 ### Test Engineer Perspective
 
@@ -147,21 +145,14 @@ and asserts no shared state at every boundary.
 
 ### Repository Responsibilities
 
-`~/source/llm-server`:
-
-- Installs and upgrades model-serving engines.
-- Starts and stops oMLX serving profiles.
-- Owns model artifacts, model-server command rendering, local-server state,
-  direct API health checks, and model smoke checks.
-- Publishes an OpenAI-compatible endpoint for Zsper.
-- Keeps benchmark and production serving evidence separate from product UX.
-
 `~/source/zsper`:
 
 - Owns all user-facing product commands.
 - Owns work, personal, and air profile initialization and isolation.
 - Generates client configs for Zed, OpenCode, Pi/little-coder, and optional
   Hermes launcher profiles.
+- Owns profile-local oMLX launch, model endpoint health checks, smoke checks,
+  and serving runtime records.
 - Owns `zsper-brain` web app, local APIs, data model, RAG, memories, notes,
   tasks, and research inbox.
 - Owns `Zsper Orchestrator`, task/run records, harness adapters, tmux launch,
@@ -171,26 +162,24 @@ and asserts no shared state at every boundary.
 
 ### Dependency Direction
 
-Zsper may depend on `llm-server` as a command or endpoint provider.
-`llm-server` must not depend on `zsper`.
+Zsper may depend on local runtime tools such as the `omlx` binary and model
+artifacts installed on the machine. Product state and launch records remain
+profile-local.
 
-Allowed dependency forms:
+Allowed serving forms:
 
-- Environment variable pointing to the model server command:
-  `ZSPER_LLM_SERVER_DIR=/Users/michaelasper/source/llm-server`.
-- Configured command templates such as:
-  `mise -C "$ZSPER_LLM_SERVER_DIR" run prod-start-zsper`.
+- `omlx` on `PATH` or an explicit `ZSPER_OMLX_BIN`.
 - HTTP calls to `http://127.0.0.1:9127/v1/models` and
   `http://127.0.0.1:9127/v1/chat/completions`.
-- A future small deploy contract file emitted by `llm-server`, for example
-  `reports/local-server/zsper-endpoint.json`.
+- Profile-local PID and launch metadata files under the selected profile
+  runtime directory.
 
 Disallowed dependency forms:
 
-- Importing benchmark internals from `llm-server` into Zsper product code.
-- Storing profile-specific product data in `llm-server`.
-- Generating Zed/OpenCode/Pi configs from `llm-server`.
-- Adding Brain, RAG, memory, or task orchestration code to `llm-server`.
+- Storing profile-specific product data outside the profile root.
+- Sharing model runtime state across profiles.
+- Generating Zed/OpenCode/Pi configs outside profile-owned paths by default.
+- Adding model serving to Brain Compose.
 
 ## Product Goals
 
@@ -216,8 +205,8 @@ Disallowed dependency forms:
 4. Zsper is not a thin wrapper around Notion, Linear, hosted search, or hosted
    model APIs.
 5. Zsper is not a general-purpose cloud agent platform.
-6. Zsper does not attempt to own low-level model serving while `llm-server`
-   remains available.
+6. Zsper keeps model serving local, explicit, and profile-scoped instead of
+   hiding it behind hosted or shared services.
 7. Zsper does not expose personal data through public tunnels.
 
 ## Operating Modes
@@ -436,7 +425,7 @@ zsper code install-pi --profile <name-or-root>
 
 Decisions:
 
-- `code start|stop|status|smoke` delegates to the `llm-server` deploy contract.
+- `code start|stop|status|smoke` launches and verifies the profile-local oMLX endpoint.
 - `code install-*` writes profile-local adapter configs first.
 - A separate `--global` flag can patch real user configs later, but the default
   is profile-local generation.
@@ -1133,7 +1122,7 @@ Create work and personal profiles. Assert:
 
 For each model profile:
 
-- Render deployment command through `llm-server`.
+- Render the `omlx serve` command from the profile-selected endpoint.
 - Start endpoint.
 - Check `/v1/models`.
 - Run smoke chat completion.
@@ -1289,7 +1278,7 @@ Deliverables:
 Success criteria:
 
 - New contributor can explain the repo boundary.
-- No product code exists in `llm-server`.
+- No product code exists outside Zsper profile-owned paths.
 - `zsper` tests can run independently.
 
 ### Phase 2: Profiles And Code Adapters
@@ -1401,7 +1390,7 @@ Success criteria:
 
 ## Design Decision Log
 
-1. `llm-server` owns oMLX deployment; `zsper` owns product platform.
+1. Zsper owns profile-local oMLX deployment and the product platform.
 2. Model-serving contract is OpenAI-compatible HTTP plus health/smoke metadata.
 3. Profiles are the unit of isolation.
 4. Work and personal share code, not state.
@@ -1482,7 +1471,7 @@ These questions are not blockers because this spec chooses a default.
 Zsper is ready for first daily use when:
 
 - Work and personal profiles initialize cleanly.
-- `zsper code start|status|smoke|stop` works through `llm-server`.
+- `zsper code start|status|smoke|stop` works through the profile-local oMLX launcher.
 - Zed, OpenCode, and Pi configs generate under each profile.
 - Brain Compose starts for a profile.
 - Chat can use the local model endpoint.

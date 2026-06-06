@@ -72,7 +72,7 @@ Milestone: M3 Brain Platform
 
 - `zsper brain status` must report profile-scoped service state.
 - Brain Compose must include Postgres/pgvector, Redis, SearXNG, Honcho, Brain
-  API, and Next.js web, and must exclude `llm-server` model serving.
+  API, and Next.js web, and must exclude model serving from Brain Compose.
 - Work and personal profile outputs must use distinct roots, database names,
   volumes, ledgers, Redis keys, and logs.
 - Mutating records must mirror to profile-local append-only JSONL ledgers with

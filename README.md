@@ -12,8 +12,8 @@ zsper profile use work
 
 Zsper keeps local AI work organised by profile. Each profile owns its config,
 Brain data, retrieval indexes, ledgers, runtime files, and generated adapter
-settings. Model serving stays outside this repository and is reached through
-local OpenAI-compatible endpoints.
+settings. Model serving is launched by Zsper through a profile-local oMLX
+runtime record and reached through local OpenAI-compatible endpoints.
 
 ## Why Zsper
 
@@ -23,7 +23,7 @@ local OpenAI-compatible endpoints.
 | Local Brain storage | Store documents, chunks, citations, notes, tasks, and runtime metadata under the selected profile. |
 | Hybrid BM25 + dense retrieval | Balance exact terms with semantic recall. |
 | Citation objects | `brain answer` returns citation objects that can be inspected later. |
-| Local model contracts | Use `llm-server` or another local OpenAI-compatible service without importing model-server internals. |
+| Profile-local model serving | Launch oMLX from Zsper and verify the local OpenAI-compatible endpoint. |
 | Append-only ledgers | Mirror mutating Brain records to profile-local JSONL for audit and recovery. |
 
 ## Quick Start
@@ -112,21 +112,18 @@ hosted model, search, or extraction calls.
 
 ## Repository Boundary
 
-Zsper is split from `llm-server`:
+`/Users/michaelasper/source/zsper` owns profiles, CLI, configs, Brain, RAG,
+orchestrator, profile-local oMLX launch, local OpenAI-compatible HTTP checks,
+docs, and tests.
 
-| Repository | Owns |
-| --- | --- |
-| `/Users/michaelasper/source/llm-server` | owns model deployment and oMLX serving |
-| `/Users/michaelasper/source/zsper` | owns profiles, CLI, configs, Brain, RAG, orchestrator, docs, and tests |
-
-Zsper may use `llm-server` only through stable external contracts such as an
-environment variable, command template, deploy contract file, or local
-OpenAI-compatible HTTP endpoint. It must not import benchmark internals, store
-profile data in `llm-server`, generate adapters from `llm-server`, or add
-Brain/RAG/memory/tasks to `llm-server`.
+Model artifacts and serving processes stay profile-scoped. `zsper code start`
+launches `omlx serve`, records the PID and launch metadata in the selected
+profile-local runtime directory, and `zsper code status` / `zsper code smoke`
+verify the selected local endpoint. Brain Compose must not include model
+serving; it consumes the same local endpoint as a client.
 
 See [Repository Boundary](docs/architecture/repository-boundary.md) for the
-allowed and disallowed dependency forms.
+allowed local serving shape and disallowed dependency forms.
 
 ## Documentation
 
@@ -144,7 +141,7 @@ allowed and disallowed dependency forms.
 
 | Constraint | Current path |
 | --- | --- |
-| Model download and serving live outside this repo | Prepare models through `llm-server` or another local OpenAI-compatible serving contract. |
+| Model artifact availability is local-machine specific | Install oMLX and model artifacts on the machine, then use `zsper code start/status/smoke` per profile. |
 | Rich parsing depends on local runtimes | Install the `rag` extras and keep Docling and embedding models available locally. |
 | Work and personal RAG use local Postgres services | Run profile Brain services before using Postgres-backed ingest/search flows. |
 | Offline state blocks hosted calls | Use `--network-policy offline` when a profile must avoid hosted model, search, extraction, and model-download calls. |

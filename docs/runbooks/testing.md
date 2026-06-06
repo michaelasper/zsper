@@ -35,7 +35,7 @@ Purpose: confirm pytest can discover the suite.
 pytest tests/unit/test_docs_boundary.py -v
 ```
 
-Purpose: verify the repository boundary and forbidden `llm-server` imports.
+Purpose: verify the repository boundary and stale external serving references.
 
 ```bash
 pytest tests/unit/test_package.py -v

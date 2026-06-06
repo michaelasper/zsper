@@ -1,41 +1,30 @@
-import ast
 from pathlib import Path
-
-import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README = REPO_ROOT / "README.md"
 BOUNDARY_DOC = REPO_ROOT / "docs" / "architecture" / "repository-boundary.md"
 SRC_ZSPER = REPO_ROOT / "src" / "zsper"
-FORBIDDEN_TEXT_REFERENCES = (
-    "/Users/michaelasper/source/llm-server",
-    "source.llm-server",
-)
-FORBIDDEN_IMPORT = "benchmarks.local_server"
+DOCS = REPO_ROOT / "docs"
 
 
-def is_forbidden_import(node: ast.AST) -> bool:
-    if isinstance(node, ast.Import):
-        return any(
-            alias.name == FORBIDDEN_IMPORT
-            or alias.name.startswith(f"{FORBIDDEN_IMPORT}.")
-            for alias in node.names
-        )
-
-    if isinstance(node, ast.ImportFrom):
-        if node.module == "benchmarks":
-            return any(alias.name == "local_server" for alias in node.names)
-        return node.module == FORBIDDEN_IMPORT or (
-            node.module is not None and node.module.startswith(f"{FORBIDDEN_IMPORT}.")
-        )
-
-    return False
+def _old_external_serving_markers() -> tuple[str, ...]:
+    return (
+        "llm" + "-server",
+        "source." + "llm" + "-server",
+        "ZSPER_" + "LLM_SERVER_DIR",
+        "llm" + "_server",
+    )
 
 
 def read_text(path: Path) -> str:
     assert path.exists(), f"Expected {path.relative_to(REPO_ROOT)} to exist"
     return path.read_text(encoding="utf-8")
+
+
+def assert_contains_all(text: str, required_phrases: tuple[str, ...]) -> None:
+    for phrase in required_phrases:
+        assert phrase in text
 
 
 def test_readme_links_to_ultimate_spec() -> None:
@@ -58,117 +47,70 @@ def test_readme_limitations_reflect_phase4_rag_commands() -> None:
     assert "`brain answer` returns citation objects" in readme
 
 
-def assert_contains_all(text: str, required_phrases: tuple[str, ...]) -> None:
-    for phrase in required_phrases:
-        assert phrase in text
-
-
-def test_repository_boundary_names_owners_and_dependency_forms() -> None:
+def test_repository_boundary_names_zsper_owned_model_serving() -> None:
     boundary = read_text(BOUNDARY_DOC)
+    readme = read_text(README)
+    required_phrases = (
+        "/Users/michaelasper/source/zsper",
+        "owns profiles",
+        "CLI",
+        "configs",
+        "Brain",
+        "RAG",
+        "orchestrator",
+        "profile-local oMLX",
+        "local OpenAI-compatible HTTP",
+        "docs",
+        "tests",
+    )
+
+    assert_contains_all(boundary, required_phrases)
+    assert_contains_all(readme, required_phrases)
 
     assert_contains_all(
         boundary,
         (
-            "/Users/michaelasper/source/llm-server",
-            "owns model deployment",
-            "oMLX serving",
-            "/Users/michaelasper/source/zsper",
-            "owns profiles",
-            "CLI",
-            "configs",
-            "Brain",
-            "RAG",
-            "orchestrator",
-            "docs",
-            "tests",
+            "ZSPER_OMLX_BIN",
+            "profile-local runtime",
+            "Brain Compose must not include model serving",
         ),
     )
 
-    readme = read_text(README)
     assert_contains_all(
-        readme,
+        boundary,
         (
-            "/Users/michaelasper/source/llm-server",
-            "owns model deployment",
-            "oMLX serving",
-            "/Users/michaelasper/source/zsper",
-            "owns profiles",
-            "CLI",
-            "configs",
-            "Brain",
-            "RAG",
-            "orchestrator",
-            "docs",
-            "tests",
+            "profile data outside the profile root",
+            "hosted model API",
+            "generated editor configs outside profile-owned paths",
         ),
     )
 
-    for allowed_form in (
-        "environment variable",
-        "command template",
-        "deploy contract file",
-        "local OpenAI-compatible HTTP",
-    ):
-        assert allowed_form in boundary
 
-    for disallowed_form in (
-        "importing benchmark internals",
-        "storing profile data in llm-server",
-        "generating adapters from llm-server",
-        "adding Brain/RAG/memory/tasks to llm-server",
-        "benchmarks.local_server",
-    ):
-        assert disallowed_form in boundary
-
-
-def find_forbidden_source_boundary_references(source_root: Path) -> list[str]:
+def _text_marker_violations(source_root: Path) -> list[str]:
     violations: list[str] = []
-    source_files = list(source_root.rglob("*.py"))
-    for source_file in source_files:
-        source = source_file.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=str(source_file))
-        for node in ast.walk(tree):
-            if is_forbidden_import(node):
-                violations.append(
-                    f"{source_file.relative_to(source_root)} must not import "
-                    f"{FORBIDDEN_IMPORT}"
-                )
-
-        for forbidden_fragment in FORBIDDEN_TEXT_REFERENCES:
-            if forbidden_fragment in source:
-                violations.append(
-                    f"{source_file.relative_to(source_root)} must not import or reference "
-                    f"{forbidden_fragment}"
-                )
+    for source_file in source_root.rglob("*"):
+        if source_file.is_file() and source_file.suffix in {".md", ".py", ".toml", ".sh"}:
+            source = source_file.read_text(encoding="utf-8")
+            for marker in _old_external_serving_markers():
+                if marker in source:
+                    violations.append(f"{source_file} references {marker}")
     return violations
 
 
-def test_forbidden_benchmark_import_detector_flags_import_forms(tmp_path: Path) -> None:
-    source_root = tmp_path / "src" / "zsper"
+def test_boundary_detector_flags_old_external_serving_markers(tmp_path: Path) -> None:
+    source_root = tmp_path / "docs"
     source_root.mkdir(parents=True)
-
-    (source_root / "direct_import.py").write_text(
-        "import benchmarks.local_server\n",
-        encoding="utf-8",
-    )
-    (source_root / "from_import.py").write_text(
-        "from benchmarks import local_server\n",
+    old_repo_name = "llm" + "-server"
+    (source_root / "bad.md").write_text(
+        f"Use {old_repo_name} for model serving.\n",
         encoding="utf-8",
     )
 
-    violations = find_forbidden_source_boundary_references(source_root)
-
-    assert len(violations) == 2
-    assert any("direct_import.py" in violation for violation in violations)
-    assert any("from_import.py" in violation for violation in violations)
+    assert _text_marker_violations(source_root) == [
+        f"{source_root / 'bad.md'} references {old_repo_name}"
+    ]
 
 
-def test_zsper_source_does_not_import_llm_server_internals() -> None:
-    if not SRC_ZSPER.exists():
-        pytest.skip(
-            "src/zsper does not exist yet; FND-002 will enforce source boundary once "
-            "package exists"
-        )
-
-    violations = find_forbidden_source_boundary_references(SRC_ZSPER)
-    assert not violations
+def test_zsper_source_and_docs_do_not_reference_old_external_serving_dependency() -> None:
+    assert _text_marker_violations(SRC_ZSPER) == []
+    assert _text_marker_violations(DOCS) == []

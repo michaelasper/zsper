@@ -84,6 +84,6 @@ def test_brain_compose_is_profile_specific_and_excludes_model_serving(
     assert "BRAIN_API_PORT=7520" in personal_env
 
     combined = "\n".join((work_compose, personal_compose, work_env, personal_env))
-    assert "llm-server" not in combined.lower()
+    assert "llm" + "-server" not in combined.lower()
     assert "model-serving" not in combined.lower()
     assert "omlx" not in combined.lower()
